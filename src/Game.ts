@@ -73,15 +73,6 @@ export class Game {
         // ── Resize ──
         window.addEventListener('resize', () => this.onResize());
 
-        // ── Start audio on first click/key ──
-        const startAudio = () => {
-            if (!this.audioStarted) {
-                this.audio.init();
-                this.audioStarted = true;
-            }
-        };
-        window.addEventListener('keydown', startAudio, { once: true });
-        window.addEventListener('click', startAudio, { once: true });
     }
 
     private setupLights() {
@@ -135,18 +126,80 @@ export class Game {
         this.race = new RaceManager(this.player, this.aiCars, this.track);
     }
 
+    private paused = false;
+    private started = false;
+    private pauseMenu = document.getElementById('pause-menu')!;
+    private startMenu = document.getElementById('start-menu')!;
+
     start() {
         this.clock.start();
+
+        // Start button
+        document.getElementById('btn-start')?.addEventListener('click', () => {
+            this.startMenu.style.display = 'none';
+            this.started = true;
+
+            // Check sound toggle
+            const soundCheck = document.getElementById('chk-sound') as HTMLInputElement;
+            if (soundCheck && !soundCheck.checked) {
+                this.audio.muted = true;
+            }
+
+            this.audio.init();
+            this.audioStarted = true;
+        });
+
+        // Pause toggle
+        window.addEventListener('keydown', (e) => {
+            if (e.code === 'Escape' && this.started) {
+                this.paused = !this.paused;
+                this.pauseMenu.style.display = this.paused ? 'flex' : 'none';
+                if (!this.paused) this.clock.getDelta(); // reset dt after unpause
+            }
+        });
+
+        // Resume button
+        document.getElementById('btn-resume')?.addEventListener('click', () => {
+            this.paused = false;
+            this.pauseMenu.style.display = 'none';
+            this.clock.getDelta();
+        });
+
+        // Restart button
+        document.getElementById('btn-restart')?.addEventListener('click', () => {
+            window.location.reload();
+        });
+
+        // Main menu button (pause)
+        document.getElementById('btn-main-menu')?.addEventListener('click', () => {
+            window.location.reload();
+        });
+
+        // Play again button (finish)
+        document.getElementById('btn-play-again')?.addEventListener('click', () => {
+            window.location.reload();
+        });
+
+        // Main menu button (finish)
+        document.getElementById('btn-finish-menu')?.addEventListener('click', () => {
+            window.location.reload();
+        });
+
         this.loop();
     }
 
     private loop = () => {
         requestAnimationFrame(this.loop);
 
-        const dt = Math.min(this.clock.getDelta(), 0.05); // cap for tab-away
+        if (!this.started || this.paused) {
+            this.clock.getDelta(); // drain clock so dt doesn't spike on resume
+            this.renderer.render(this.scene, this.camera);
+            return;
+        }
+
+        const dt = Math.min(this.clock.getDelta(), 0.05);
         const input = this.input.update(dt);
 
-        // Only pass input during racing
         const raceInput = this.race.state === 'racing'
             ? input
             : { throttle: 0, brake: 0, steer: 0 };
@@ -163,6 +216,7 @@ export class Game {
                 this.player.state.isDrifting,
                 this.player.state.driftAngle,
                 input.brake,
+                this.player.state.speed,
             );
         }
 

@@ -1,17 +1,20 @@
 <!DOCTYPE html>
 <html lang="tr">
+
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Arcade Racer</title>
   <link rel="stylesheet" href="/src/style.css" />
 </head>
+
 <body>
   <canvas id="game-canvas"></canvas>
 
   <!-- HUD Overlay -->
   <div id="hud">
     <div id="speed-display">
+      <span id="gear-indicator" class="gear-drive">D</span>
       <span id="speed-value">0</span>
       <span id="speed-unit">km/h</span>
     </div>
@@ -34,6 +37,42 @@
     <div id="countdown"></div>
   </div>
 
+  <!-- Start Menu -->
+  <div id="start-menu">
+    <h1 id="game-title">ARCADE RACER</h1>
+    <p id="game-subtitle">NASCAR OVAL</p>
+    <button id="btn-start">START RACE</button>
+    <div id="start-options">
+      <label id="sound-toggle">
+        <input type="checkbox" id="chk-sound" checked />
+        <span>🔊 Sound</span>
+      </label>
+    </div>
+    <p id="controls-hint">↑W Gas &nbsp; ↓S Brake/Reverse &nbsp; ←→AD Steer &nbsp; ESC Pause</p>
+  </div>
+
+  <!-- Pause Menu -->
+  <div id="pause-menu" style="display:none;">
+    <h2>PAUSED</h2>
+    <button id="btn-resume">RESUME</button>
+    <button id="btn-restart">RESTART</button>
+    <button id="btn-main-menu">MAIN MENU</button>
+  </div>
+
+  <!-- Finish Overlay -->
+  <div id="finish-overlay" style="display:none;">
+    <div id="finish-content">
+      <h2 id="finish-title">RACE COMPLETE</h2>
+      <div id="finish-position">P1</div>
+      <div id="finish-times"></div>
+      <div id="finish-buttons">
+        <button id="btn-play-again">PLAY AGAIN</button>
+        <button id="btn-finish-menu">MAIN MENU</button>
+      </div>
+    </div>
+  </div>
+
   <script type="module" src="/src/main.ts"></script>
 </body>
+
 </html>

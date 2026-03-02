@@ -1,5 +1,4 @@
 import { RaceManager } from '../race/RaceManager';
-import { Car } from '../entities/Car';
 
 /**
  * Updates the HTML HUD overlay every frame.
@@ -13,12 +12,26 @@ export class HUD {
     private posSuffixEl = document.getElementById('position-suffix')!;
     private countdownEl = document.getElementById('countdown')!;
     private overlayEl = document.getElementById('race-overlay')!;
+    private gearEl = document.getElementById('gear-indicator')!;
+    private finishOverlay = document.getElementById('finish-overlay')!;
+    private finishPos = document.getElementById('finish-position')!;
+    private finishTimes = document.getElementById('finish-times')!;
 
     update(race: RaceManager) {
         const car = race.player;
 
-        // Speed
-        this.speedEl.textContent = Math.round(car.getSpeedKmh()).toString();
+        // Speed (absolute value for reverse)
+        const speedKmh = Math.abs(car.getSpeedKmh());
+        this.speedEl.textContent = Math.round(speedKmh).toString();
+
+        // Gear indicator
+        if (car.state.isReversing) {
+            this.gearEl.textContent = 'R';
+            this.gearEl.className = 'gear-reverse';
+        } else {
+            this.gearEl.textContent = 'D';
+            this.gearEl.className = 'gear-drive';
+        }
 
         // Lap
         const displayLap = Math.min(car.lap, race.totalLaps);
@@ -52,11 +65,25 @@ export class HUD {
             this.countdownEl.className = '';
         }
 
-        // Finished
+        // Finished — show detailed results
         if (race.state === 'finished') {
             this.overlayEl.style.pointerEvents = 'all';
-            this.countdownEl.textContent = `P${pos}`;
-            this.countdownEl.className = 'visible';
+            this.countdownEl.textContent = '';
+            this.countdownEl.className = '';
+
+            this.finishOverlay.style.display = 'flex';
+            this.finishPos.textContent = `P${pos}`;
+
+            // Build lap times list
+            let timesHTML = '';
+            car.lapTimes.forEach((lt, i) => {
+                const isBest = lt === car.bestLap;
+                timesHTML += `<div class="finish-lap-row${isBest ? ' best' : ''}">
+                    <span>LAP ${i + 1}</span>
+                    <span>${this.formatTime(lt)}</span>
+                </div>`;
+            });
+            this.finishTimes.innerHTML = timesHTML;
         }
     }
 

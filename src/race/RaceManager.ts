@@ -11,6 +11,7 @@ export class RaceManager {
     state: RaceState = 'countdown';
     countdownValue = 3;
     private countdownTimer = 0;
+    private raceStarted = false; // guard against false lap triggers at start
 
     readonly player: Car;
     readonly aiDrivers: AIDriver[];
@@ -38,6 +39,8 @@ export class RaceManager {
                 this.countdownValue--;
                 if (this.countdownValue < 0) {
                     this.state = 'racing';
+                    // Allow lap counting after a short delay
+                    setTimeout(() => { this.raceStarted = true; }, 2000);
                 }
             }
             return;
@@ -89,6 +92,9 @@ export class RaceManager {
                 car.checkpoints |= (1 << i);
             }
         }
+
+        // Don't count laps until race has properly started
+        if (!this.raceStarted) return;
 
         // Lap completion: crossed t=0 boundary with all checkpoints
         const allCPs = (1 << CHECKPOINT_T_VALUES.length) - 1;

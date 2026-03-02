@@ -41,7 +41,7 @@ export const TRACK_CONTROL_POINTS: THREE.Vector3[] = [
 export const TRACK_SEGMENTS = 600;
 
 /** Checkpoint t-values for lap validation */
-export const CHECKPOINT_T_VALUES = [0.0, 0.25, 0.5, 0.75];
+export const CHECKPOINT_T_VALUES = [0.08, 0.25, 0.5, 0.75];
 
 /** Start grid positions — offset from t=0 backwards */
 export const GRID_OFFSETS = [

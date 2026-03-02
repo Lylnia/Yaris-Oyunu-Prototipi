@@ -5,7 +5,7 @@ import type { InputState } from '../InputManager';
 export const CAR_CONFIG = {
     mass: 1400,
     maxSpeed: kmhToMs(185),           // ~51.4 m/s
-    maxReverseSpeed: kmhToMs(30),
+    maxReverseSpeed: kmhToMs(40),
     wheelbase: 2.6,                    // metres
 
     /* Acceleration: 0-100 ~12-15s, asymptotic toward max */
@@ -69,6 +69,7 @@ export interface CarState {
     isDrifting: boolean;
     rpm: number;              // 0-1 for audio
     isOnRoad: boolean;
+    isReversing: boolean;
 }
 
 export function createCarState(x = 0, z = 0, heading = 0): CarState {
@@ -78,6 +79,7 @@ export function createCarState(x = 0, z = 0, heading = 0): CarState {
         speed: 0, weightFront: 0.5,
         driftAngle: 0, driftTimer: 0,
         isDrifting: false, rpm: 0, isOnRoad: true,
+        isReversing: false,
     };
 }
 
@@ -105,24 +107,44 @@ export function updateCarPhysics(
     const frontGrip = C.baseFrontGrip * (state.weightFront / 0.5) * surfaceGrip;
     const rearGrip = C.baseRearGrip * (wRear / 0.5) * surfaceGrip;
 
-    /* ── Acceleration (non-linear curve) ── */
-    if (input.throttle > 0.01 && state.speed >= 0) {
-        const factor = 1 - Math.pow(speedRatio, C.accelCurveExp);
-        state.speed += input.throttle * C.accelForce * factor * dt;
+    /* ── Acceleration ── */
+    if (input.throttle > 0.01) {
+        if (state.speed >= 0) {
+            // Forward
+            const factor = 1 - Math.pow(speedRatio, C.accelCurveExp);
+            state.speed += input.throttle * C.accelForce * factor * dt;
+        } else {
+            // In reverse → throttle acts as brake to slow down
+            state.speed += input.throttle * C.brakeForce * 0.5 * dt;
+        }
     }
 
-    /* ── Braking ── */
-    if (input.brake > 0.01 && state.speed > 0) {
-        const fb = input.brake * C.brakeForce * C.brakeFrontRatio * (state.weightFront / 0.5);
-        const rb = input.brake * C.brakeForce * C.brakeRearRatio * (wRear / 0.5);
-        state.speed -= (fb + rb) * dt;
-        if (state.speed < 0) state.speed = 0;
+    /* ── Braking / Reverse ── */
+    if (input.brake > 0.01) {
+        if (state.speed > 0.3) {
+            const fb = input.brake * C.brakeForce * C.brakeFrontRatio * (state.weightFront / 0.5);
+            const rb = input.brake * C.brakeForce * C.brakeRearRatio * (wRear / 0.5);
+            state.speed -= (fb + rb) * dt;
+            if (state.speed < 0) state.speed = 0;
+        } else if (state.speed <= 0.3 && input.throttle < 0.1) {
+            // Reverse gear
+            state.speed -= input.brake * C.accelForce * 0.35 * dt;
+        }
     }
 
     /* ── Drag ── */
-    state.speed -= state.speed * C.dragCoefficient * dt;
-    state.speed -= C.rollingResistance * dt;
-    if (state.speed < 0.01) state.speed = 0;
+    if (state.speed > 0) {
+        state.speed -= state.speed * C.dragCoefficient * dt;
+        state.speed -= C.rollingResistance * dt;
+    } else if (state.speed < 0) {
+        state.speed -= state.speed * C.dragCoefficient * dt;
+        state.speed += C.rollingResistance * dt;
+    }
+
+    /* Speed floor — only when no input */
+    if (Math.abs(state.speed) < 0.01 && input.throttle < 0.01 && input.brake < 0.01) {
+        state.speed = 0;
+    }
 
     /* ── Off-road extra drag ── */
     if (!state.isOnRoad) {
@@ -131,11 +153,13 @@ export function updateCarPhysics(
 
     /* ── Steering ── */
     const maxSteer = lerp(C.maxSteerAngleLow, C.maxSteerAngleHigh, speedRatio);
-    const steerAngle = -input.steer * maxSteer;  // negated for Three.js Y-rotation convention
+    const steerAngle = -input.steer * maxSteer;
 
     let turnRate = 0;
-    if (state.speed > 0.5) {
-        turnRate = (steerAngle / C.wheelbase) * Math.min(state.speed, C.maxSpeed * 0.45) * 0.7;
+    if (Math.abs(state.speed) > 0.5) {
+        const spd = Math.abs(state.speed);
+        const dir = Math.sign(state.speed); // negative in reverse → inverts steering
+        turnRate = (steerAngle / C.wheelbase) * Math.min(spd, C.maxSpeed * 0.45) * 0.7 * dir;
         turnRate *= Math.min(1, frontGrip);
     }
 
@@ -183,18 +207,21 @@ export function updateCarPhysics(
         state.heading = lerpAngle(state.heading, state.travelDir + Math.sign(state.driftAngle) * softCap, damping * dt * 5);
     }
 
-    /* ── Traction Assist (non-drift gentle correction) ── */
+    /* ── Traction Assist ── */
     if (!state.isDrifting && Math.abs(state.driftAngle) > 0.03) {
         state.travelDir += state.driftAngle * C.tractionAssist * dt;
     }
 
     /* ── RPM (audio) ── */
-    state.rpm = clamp(speedRatio * 0.75 + input.throttle * 0.25, 0, 1);
+    state.rpm = clamp(Math.abs(speedRatio) * 0.75 + input.throttle * 0.25, 0, 1);
+
+    /* ── Reverse state ── */
+    state.isReversing = state.speed < -0.1;
 
     /* ── Position Update ── */
     const moveAngle = state.travelDir;
     state.px += Math.sin(moveAngle) * state.speed * dt;
     state.pz += Math.cos(moveAngle) * state.speed * dt;
 
-    state.speed = clamp(state.speed, 0, C.maxSpeed);
+    state.speed = clamp(state.speed, -C.maxReverseSpeed, C.maxSpeed);
 }
