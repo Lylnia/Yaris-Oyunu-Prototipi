@@ -38,12 +38,12 @@ export class Game {
         this.renderer.shadowMap.enabled = true;
         this.renderer.shadowMap.type = THREE.PCFSoftShadowMap;
         this.renderer.toneMapping = THREE.ACESFilmicToneMapping;
-        this.renderer.toneMappingExposure = 0.8;
+        this.renderer.toneMappingExposure = 1.6;
 
         // ── Scene ──
         this.scene = new THREE.Scene();
         this.scene.background = new THREE.Color(0x050510);
-        this.scene.fog = new THREE.FogExp2(0x050510, 0.003);
+        this.scene.fog = new THREE.FogExp2(0x080818, 0.0012);
 
         // ── Camera ──
         this.camera = new THREE.PerspectiveCamera(65, window.innerWidth / window.innerHeight, 0.1, 1500);
@@ -86,21 +86,25 @@ export class Game {
 
     private setupLights() {
         // Moonlight
-        const dir = new THREE.DirectionalLight(0x334466, 0.3);
-        dir.position.set(-100, 200, 100);
+        const dir = new THREE.DirectionalLight(0x6688bb, 1.0);
+        dir.position.set(-100, 300, 150);
         dir.castShadow = true;
         dir.shadow.mapSize.set(2048, 2048);
         dir.shadow.camera.near = 10;
-        dir.shadow.camera.far = 500;
-        dir.shadow.camera.left = -200;
-        dir.shadow.camera.right = 200;
-        dir.shadow.camera.top = 200;
-        dir.shadow.camera.bottom = -200;
+        dir.shadow.camera.far = 600;
+        dir.shadow.camera.left = -300;
+        dir.shadow.camera.right = 300;
+        dir.shadow.camera.top = 300;
+        dir.shadow.camera.bottom = -300;
         this.scene.add(dir);
 
         // Hemisphere (sky / ground)
-        const hemi = new THREE.HemisphereLight(0x111133, 0x0a0a15, 0.5);
+        const hemi = new THREE.HemisphereLight(0x334466, 0x151525, 1.2);
         this.scene.add(hemi);
+
+        // Extra ambient so nothing is pure black
+        const ambient = new THREE.AmbientLight(0x222244, 0.8);
+        this.scene.add(ambient);
     }
 
     private setupCars() {

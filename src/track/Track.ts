@@ -102,7 +102,8 @@ export class Track {
         geo.computeVertexNormals();
 
         const mat = new THREE.MeshStandardMaterial({
-            color: 0x333340, flatShading: true, roughness: 0.9, metalness: 0.1,
+            color: 0x555568, flatShading: true, roughness: 0.75, metalness: 0.05,
+            emissive: 0x111118, emissiveIntensity: 0.3,
         });
         const mesh = new THREE.Mesh(geo, mat);
         mesh.receiveShadow = true;
@@ -119,14 +120,14 @@ export class Track {
             pts.push(new THREE.Vector3(p.x, p.y + 0.05, p.z));
         }
         const geo = new THREE.BufferGeometry().setFromPoints(pts);
-        const mat = new THREE.LineBasicMaterial({ color: 0xffffff, transparent: true, opacity: 0.15 });
+        const mat = new THREE.LineBasicMaterial({ color: 0xffffff, transparent: true, opacity: 0.4 });
         this.group.add(new THREE.Line(geo, mat));
     }
 
     private buildBarriers() {
         const halfW = TRACK_WIDTH / 2 + 0.5;
         const barrierMat = new THREE.MeshStandardMaterial({
-            color: 0xff0066, emissive: 0xff0044, emissiveIntensity: 0.3, flatShading: true,
+            color: 0xff2288, emissive: 0xff0066, emissiveIntensity: 0.7, flatShading: true,
         });
 
         for (let side = -1; side <= 1; side += 2) {
@@ -157,7 +158,7 @@ export class Track {
 
     private buildGround() {
         const geo = new THREE.PlaneGeometry(1200, 1200);
-        const mat = new THREE.MeshStandardMaterial({ color: 0x1a1a2e, flatShading: true });
+        const mat = new THREE.MeshStandardMaterial({ color: 0x22223a, flatShading: true, emissive: 0x0a0a18, emissiveIntensity: 0.2 });
         const ground = new THREE.Mesh(geo, mat);
         ground.rotation.x = -Math.PI / 2;
         ground.position.y = -0.1;
@@ -274,27 +275,39 @@ export class Track {
     }
 
     private buildLights() {
-        // Ambient neon glow
-        const ambient = new THREE.AmbientLight(0x111133, 0.4);
-        this.group.add(ambient);
-
-        // Trackside point lights every ~100m
-        for (let i = 0; i < 40; i++) {
-            const t = i / 40;
+        // Trackside point lights every ~100m — bright enough to illuminate road
+        for (let i = 0; i < 60; i++) {
+            const t = i / 60;
             const { pos, tangent } = this.getPointAt(t);
             const side = i % 2 === 0 ? 1 : -1;
             const lx = pos.x + tangent.z * side * (TRACK_WIDTH / 2 + 2);
             const lz = pos.z - tangent.x * side * (TRACK_WIDTH / 2 + 2);
 
-            const light = new THREE.PointLight(0xff8844, 0.6, 40);
-            light.position.set(lx, 6, lz);
+            // Warm street light
+            const light = new THREE.PointLight(0xffaa66, 2.0, 60);
+            light.position.set(lx, 7, lz);
             this.group.add(light);
 
-            // Lamp post
-            const postMat = new THREE.MeshStandardMaterial({ color: 0x444444, flatShading: true });
-            const post = new THREE.Mesh(new THREE.CylinderGeometry(0.15, 0.15, 6, 6), postMat);
-            post.position.set(lx, 3, lz);
+            // Lamp post with glowing head
+            const postMat = new THREE.MeshStandardMaterial({ color: 0x666666, flatShading: true });
+            const post = new THREE.Mesh(new THREE.CylinderGeometry(0.12, 0.18, 7, 6), postMat);
+            post.position.set(lx, 3.5, lz);
             this.group.add(post);
+
+            // Glowing lamp head
+            const headMat = new THREE.MeshStandardMaterial({ color: 0xffcc88, emissive: 0xffaa44, emissiveIntensity: 1.5 });
+            const head = new THREE.Mesh(new THREE.BoxGeometry(0.6, 0.2, 0.6), headMat);
+            head.position.set(lx, 7, lz);
+            this.group.add(head);
+
+            // Every 3rd lamp also has a coloured neon accent
+            if (i % 3 === 0) {
+                const neonColors = [0x00ffff, 0xff0080, 0x8000ff, 0x00ff80];
+                const nc = neonColors[i % neonColors.length];
+                const neonLight = new THREE.PointLight(nc, 1.2, 35);
+                neonLight.position.set(lx, 4, lz);
+                this.group.add(neonLight);
+            }
         }
     }
 

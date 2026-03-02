@@ -7,11 +7,14 @@ import * as THREE from 'three';
 export function createCarModel(color: number = 0x00ffff): THREE.Group {
     const car = new THREE.Group();
 
-    const bodyMat = new THREE.MeshStandardMaterial({ color, flatShading: true, metalness: 0.6, roughness: 0.3 });
-    const darkMat = new THREE.MeshStandardMaterial({ color: 0x111111, flatShading: true });
-    const glassMat = new THREE.MeshStandardMaterial({ color: 0x88ccff, flatShading: true, transparent: true, opacity: 0.6, metalness: 0.9, roughness: 0.1 });
-    const lightMat = new THREE.MeshStandardMaterial({ color: 0xffffff, emissive: 0xffffff, emissiveIntensity: 0.8 });
-    const tailMat = new THREE.MeshStandardMaterial({ color: 0xff0000, emissive: 0xff0000, emissiveIntensity: 0.6 });
+    const bodyMat = new THREE.MeshStandardMaterial({
+        color, flatShading: true, metalness: 0.6, roughness: 0.3,
+        emissive: color, emissiveIntensity: 0.15,
+    });
+    const darkMat = new THREE.MeshStandardMaterial({ color: 0x222222, flatShading: true, emissive: 0x111111, emissiveIntensity: 0.1 });
+    const glassMat = new THREE.MeshStandardMaterial({ color: 0x88ccff, flatShading: true, transparent: true, opacity: 0.6, metalness: 0.9, roughness: 0.1, emissive: 0x446688, emissiveIntensity: 0.3 });
+    const lightMat = new THREE.MeshStandardMaterial({ color: 0xffffff, emissive: 0xffffff, emissiveIntensity: 1.2 });
+    const tailMat = new THREE.MeshStandardMaterial({ color: 0xff0000, emissive: 0xff0000, emissiveIntensity: 1.0 });
 
     // ── Main body ──
     const bodyGeo = new THREE.BoxGeometry(1.8, 0.5, 4.2);
@@ -51,6 +54,11 @@ export function createCarModel(color: number = 0x00ffff): THREE.Group {
         car.add(hl);
     });
 
+    // ── Headlight point light (illuminates road ahead) ──
+    const headlightBeam = new THREE.PointLight(0xffffff, 1.5, 25);
+    headlightBeam.position.set(0, 0.5, 2.5);
+    car.add(headlightBeam);
+
     // ── Tail lights ──
     [[-0.6, 0.45, -2.12], [0.6, 0.45, -2.12]].forEach(([x, y, z]) => {
         const tl = new THREE.Mesh(new THREE.BoxGeometry(0.35, 0.12, 0.05), tailMat);
@@ -58,9 +66,24 @@ export function createCarModel(color: number = 0x00ffff): THREE.Group {
         car.add(tl);
     });
 
+    // ── Tail light glow ──
+    const tailGlow = new THREE.PointLight(0xff0000, 0.8, 10);
+    tailGlow.position.set(0, 0.45, -2.3);
+    car.add(tailGlow);
+
+    // ── Neon side strips ──
+    const stripMat = new THREE.MeshStandardMaterial({
+        color, emissive: color, emissiveIntensity: 1.0,
+    });
+    [-0.92, 0.92].forEach(x => {
+        const strip = new THREE.Mesh(new THREE.BoxGeometry(0.05, 0.08, 3.5), stripMat);
+        strip.position.set(x, 0.18, 0);
+        car.add(strip);
+    });
+
     // ── Wheels ──
     const wheelGeo = new THREE.CylinderGeometry(0.32, 0.32, 0.22, 8);
-    const wheelMat = new THREE.MeshStandardMaterial({ color: 0x222222, flatShading: true });
+    const wheelMat = new THREE.MeshStandardMaterial({ color: 0x333333, flatShading: true, emissive: 0x111111, emissiveIntensity: 0.1 });
     const wheelPositions = [
         [-0.9, 0.15, 1.3], [0.9, 0.15, 1.3],   // front
         [-0.9, 0.15, -1.3], [0.9, 0.15, -1.3],  // rear
@@ -78,7 +101,7 @@ export function createCarModel(color: number = 0x00ffff): THREE.Group {
     under.position.y = 0.12;
     car.add(under);
 
-    car.traverse(c => { if (c instanceof THREE.Mesh) c.castShadow = true; });
+    car.traverse((c: THREE.Object3D) => { if (c instanceof THREE.Mesh) c.castShadow = true; });
 
     return car;
 }

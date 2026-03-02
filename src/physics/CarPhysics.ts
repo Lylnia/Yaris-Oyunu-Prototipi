@@ -8,12 +8,12 @@ export const CAR_CONFIG = {
     maxReverseSpeed: kmhToMs(30),
     wheelbase: 2.6,                    // metres
 
-    /* Acceleration: 0-100 ~3s, asymptotic toward max */
-    accelForce: 28,                    // m/s²  peak
+    /* Acceleration: 0-100 ~12-15s, asymptotic toward max */
+    accelForce: 2.5,                   // m/s²  peak
     accelCurveExp: 1.8,                // higher = more asymptotic
 
     /* Braking */
-    brakeForce: 38,                    // total m/s²
+    brakeForce: 15,                    // total m/s²
     brakeFrontRatio: 0.70,             // 70% front
     brakeRearRatio: 0.30,              // 30% rear
 
@@ -47,11 +47,11 @@ export const CAR_CONFIG = {
     tractionAssist: 2.5,
 
     /* Drag */
-    dragCoefficient: 0.35,
-    rollingResistance: 0.8,
+    dragCoefficient: 0.003,
+    rollingResistance: 0.15,
 
     /* Off-road */
-    offRoadDrag: 4.0,
+    offRoadDrag: 1.5,
 
     /* Grip correction: how fast travel dir follows heading */
     gripCorrectionSpeed: 6.0,
@@ -131,7 +131,7 @@ export function updateCarPhysics(
 
     /* ── Steering ── */
     const maxSteer = lerp(C.maxSteerAngleLow, C.maxSteerAngleHigh, speedRatio);
-    const steerAngle = input.steer * maxSteer;
+    const steerAngle = -input.steer * maxSteer;  // negated for Three.js Y-rotation convention
 
     let turnRate = 0;
     if (state.speed > 0.5) {
