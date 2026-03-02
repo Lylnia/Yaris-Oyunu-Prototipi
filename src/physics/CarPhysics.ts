@@ -22,12 +22,12 @@ export const CAR_CONFIG = {
     baseRearGrip: 0.82,
 
     /* Steering (speed-dependent) */
-    maxSteerAngleLow: deg2rad(38),     // at 0 km/h
-    maxSteerAngleHigh: deg2rad(12),    // at max speed
+    maxSteerAngleLow: deg2rad(22),     // at 0 km/h
+    maxSteerAngleHigh: deg2rad(6),     // at max speed
 
     /* Body rotation assist — arcade magic */
-    bodyRotationAssist: 0.22,
-    brakeOversteerFactor: 0.30,
+    bodyRotationAssist: 0.12,
+    brakeOversteerFactor: 0.20,
 
     /* Weight transfer */
     maxWeightTransfer: 0.14,
@@ -54,7 +54,7 @@ export const CAR_CONFIG = {
     offRoadDrag: 1.5,
 
     /* Grip correction: how fast travel dir follows heading */
-    gripCorrectionSpeed: 6.0,
+    gripCorrectionSpeed: 4.0,
 };
 
 /* ── Physics state ── */
@@ -122,7 +122,7 @@ export function updateCarPhysics(
     /* ── Drag ── */
     state.speed -= state.speed * C.dragCoefficient * dt;
     state.speed -= C.rollingResistance * dt;
-    if (state.speed < 0.05) state.speed = 0;
+    if (state.speed < 0.01) state.speed = 0;
 
     /* ── Off-road extra drag ── */
     if (!state.isOnRoad) {
@@ -135,7 +135,7 @@ export function updateCarPhysics(
 
     let turnRate = 0;
     if (state.speed > 0.5) {
-        turnRate = (steerAngle / C.wheelbase) * Math.min(state.speed, C.maxSpeed * 0.85);
+        turnRate = (steerAngle / C.wheelbase) * Math.min(state.speed, C.maxSpeed * 0.45) * 0.7;
         turnRate *= Math.min(1, frontGrip);
     }
 

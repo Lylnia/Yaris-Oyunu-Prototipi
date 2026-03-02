@@ -1,4 +1,4 @@
-import * as THREE from 'three';
+// AI Driver system
 import { Car } from '../entities/Car';
 import { Track } from '../track/Track';
 import { InputState } from '../InputManager';
@@ -19,33 +19,32 @@ export enum AIType {
 interface SpeedNode { t: number; speedFactor: number; }
 
 const CONSISTENT_PROFILE: SpeedNode[] = [
-    { t: 0.00, speedFactor: 0.82 },  // start straight
-    { t: 0.10, speedFactor: 0.85 },
-    { t: 0.15, speedFactor: 0.55 },  // turn 1 braking
-    { t: 0.20, speedFactor: 0.75 },  // east straight
-    { t: 0.30, speedFactor: 0.50 },  // S-curve
-    { t: 0.40, speedFactor: 0.65 },  // uphill
-    { t: 0.50, speedFactor: 0.55 },  // tunnel
-    { t: 0.60, speedFactor: 0.70 },  // downhill
-    { t: 0.70, speedFactor: 0.45 },  // hairpin
-    { t: 0.78, speedFactor: 0.50 },  // technical
-    { t: 0.88, speedFactor: 0.80 },  // final straight
-    { t: 1.00, speedFactor: 0.82 },
+    // Oval: right straight → turn 1 (top) → left straight → turn 2 (bottom)
+    { t: 0.00, speedFactor: 0.80 },  // right straight start
+    { t: 0.12, speedFactor: 0.85 },  // right straight mid
+    { t: 0.20, speedFactor: 0.70 },  // entering turn 1
+    { t: 0.30, speedFactor: 0.60 },  // turn 1 apex
+    { t: 0.38, speedFactor: 0.70 },  // exiting turn 1
+    { t: 0.50, speedFactor: 0.85 },  // left straight mid
+    { t: 0.62, speedFactor: 0.85 },  // left straight end
+    { t: 0.70, speedFactor: 0.70 },  // entering turn 2
+    { t: 0.80, speedFactor: 0.60 },  // turn 2 apex
+    { t: 0.88, speedFactor: 0.70 },  // exiting turn 2
+    { t: 1.00, speedFactor: 0.80 },
 ];
 
 const AGGRESSIVE_PROFILE: SpeedNode[] = [
-    { t: 0.00, speedFactor: 0.92 },
-    { t: 0.10, speedFactor: 0.95 },
-    { t: 0.15, speedFactor: 0.65 },  // late brake
-    { t: 0.20, speedFactor: 0.88 },
-    { t: 0.30, speedFactor: 0.60 },
-    { t: 0.40, speedFactor: 0.78 },
-    { t: 0.50, speedFactor: 0.65 },
-    { t: 0.60, speedFactor: 0.82 },
-    { t: 0.70, speedFactor: 0.55 },
-    { t: 0.78, speedFactor: 0.60 },
-    { t: 0.88, speedFactor: 0.93 },
-    { t: 1.00, speedFactor: 0.92 },
+    { t: 0.00, speedFactor: 0.90 },
+    { t: 0.12, speedFactor: 0.93 },
+    { t: 0.20, speedFactor: 0.80 },  // late brake
+    { t: 0.30, speedFactor: 0.70 },  // turn 1
+    { t: 0.38, speedFactor: 0.82 },
+    { t: 0.50, speedFactor: 0.93 },
+    { t: 0.62, speedFactor: 0.93 },
+    { t: 0.70, speedFactor: 0.80 },  // late brake turn 2
+    { t: 0.80, speedFactor: 0.70 },
+    { t: 0.88, speedFactor: 0.82 },
+    { t: 1.00, speedFactor: 0.90 },
 ];
 
 /**
@@ -58,7 +57,7 @@ export class AIDriver {
     private errorActive = false;
     private errorSteer = 0;
     /** For Adaptive: target lap time */
-    private targetLapTime = 150; // seconds (~2.5 min default)
+    private targetLapTime = 55; // seconds (oval lap)
 
     constructor(readonly car: Car, type: AIType, private track: Track) {
         this.type = type;
@@ -72,7 +71,6 @@ export class AIDriver {
     /** Call after player completes a lap to update Adaptive AI */
     onPlayerLapComplete(playerLapTime: number) {
         if (this.type === AIType.Adaptive) {
-            // Target slightly faster than player's lap
             this.targetLapTime = playerLapTime * 0.985;
         }
     }
@@ -82,7 +80,7 @@ export class AIDriver {
         const targetSpeed = this.getTargetSpeed(t, playerCar, currentLap, totalLaps);
 
         // ── Steer toward next point on ideal line ──
-        const lookAhead = (t + 0.015) % 1;
+        const lookAhead = (t + 0.02) % 1;
         const target = this.track.getPointAt(lookAhead);
         const dx = target.pos.x - this.car.state.px;
         const dz = target.pos.z - this.car.state.pz;
@@ -91,7 +89,8 @@ export class AIDriver {
         while (angleDiff > Math.PI) angleDiff -= Math.PI * 2;
         while (angleDiff < -Math.PI) angleDiff += Math.PI * 2;
 
-        let steer = clamp(angleDiff * 3, -1, 1);
+        // Negate steer to match physics convention (steerAngle is negated in physics)
+        let steer = clamp(-angleDiff * 3, -1, 1);
 
         // ── Aggressive: random errors ──
         if (this.type === AIType.Aggressive) {

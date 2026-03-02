@@ -51,6 +51,7 @@ export class RaceManager {
         this.player.state.py = track.getElevation(this.player.state.px, this.player.state.pz);
         const surfaceGrip = playerOnRoad ? 1.0 : 0.55;
         this.player.update(playerInput, dt, surfaceGrip);
+        track.constrainToTrack(this.player.state);
         this.updateTrackProgress(this.player, track);
 
         // ── Update AI ──
@@ -61,6 +62,7 @@ export class RaceManager {
             const aiGrip = car.state.isOnRoad ? 1.0 : 0.6;
             const aiInput = ai.update(dt, this.player, car.lap, this.totalLaps);
             car.update(aiInput, dt, aiGrip);
+            track.constrainToTrack(car.state);
             this.updateTrackProgress(car, track);
         }
 
