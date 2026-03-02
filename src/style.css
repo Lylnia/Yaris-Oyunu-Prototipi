@@ -1,0 +1,126 @@
+@import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&display=swap');
+
+* { margin: 0; padding: 0; box-sizing: border-box; }
+
+body {
+  overflow: hidden;
+  background: #000;
+  font-family: 'Orbitron', sans-serif;
+  color: #fff;
+}
+
+#game-canvas {
+  display: block;
+  width: 100vw;
+  height: 100vh;
+}
+
+/* ── HUD ── */
+#hud {
+  position: fixed;
+  top: 0; left: 0; right: 0; bottom: 0;
+  pointer-events: none;
+  z-index: 10;
+}
+
+/* Speed */
+#speed-display {
+  position: absolute;
+  bottom: 40px; right: 40px;
+  text-align: right;
+}
+#speed-value {
+  font-size: 72px;
+  font-weight: 900;
+  color: #0ff;
+  text-shadow: 0 0 20px rgba(0,255,255,0.6), 0 0 40px rgba(0,255,255,0.3);
+  line-height: 1;
+}
+#speed-unit {
+  display: block;
+  font-size: 14px;
+  color: rgba(0,255,255,0.6);
+  letter-spacing: 4px;
+}
+
+/* Lap Info */
+#lap-info {
+  position: absolute;
+  top: 30px; right: 40px;
+  text-align: right;
+}
+#lap-counter {
+  font-size: 16px;
+  color: #ff0080;
+  letter-spacing: 3px;
+  margin-bottom: 6px;
+}
+#lap-time {
+  font-size: 28px;
+  font-weight: 700;
+  color: #fff;
+  text-shadow: 0 0 10px rgba(255,255,255,0.4);
+}
+#best-lap {
+  font-size: 13px;
+  color: rgba(255,255,255,0.4);
+  margin-top: 4px;
+}
+
+/* Position */
+#position-display {
+  position: absolute;
+  top: 30px; left: 40px;
+}
+#position-value {
+  font-size: 64px;
+  font-weight: 900;
+  color: #ff0080;
+  text-shadow: 0 0 20px rgba(255,0,128,0.5);
+}
+#position-suffix {
+  font-size: 24px;
+  color: #ff0080;
+  vertical-align: super;
+}
+#position-total {
+  font-size: 20px;
+  color: rgba(255,255,255,0.4);
+  margin-left: 4px;
+}
+
+/* Minimap */
+#minimap-container {
+  position: absolute;
+  bottom: 40px; left: 40px;
+  width: 180px; height: 180px;
+  border: 1px solid rgba(0,255,255,0.3);
+  border-radius: 8px;
+  background: rgba(0,0,0,0.5);
+  backdrop-filter: blur(4px);
+}
+#minimap-canvas {
+  width: 100%; height: 100%;
+  border-radius: 8px;
+}
+
+/* Race Overlay */
+#race-overlay {
+  position: fixed;
+  top: 0; left: 0; right: 0; bottom: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 20;
+  pointer-events: none;
+}
+#countdown {
+  font-size: 120px;
+  font-weight: 900;
+  color: #ff0080;
+  text-shadow: 0 0 40px rgba(255,0,128,0.8), 0 0 80px rgba(255,0,128,0.4);
+  opacity: 0;
+  transition: opacity 0.2s;
+}
+#countdown.visible { opacity: 1; }
+#countdown.go { color: #0f0; text-shadow: 0 0 40px rgba(0,255,0,0.8); }
