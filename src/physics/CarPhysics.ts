@@ -1,5 +1,5 @@
-import { clamp, lerp, normalizeAngle, lerpAngle, kmhToMs, deg2rad } from './utils/MathUtils';
-import type { InputState } from './InputManager';
+import { clamp, lerp, normalizeAngle, lerpAngle, kmhToMs, deg2rad } from '../utils/MathUtils';
+import type { InputState } from '../InputManager';
 
 /* ── Tunable configuration ── */
 export const CAR_CONFIG = {
