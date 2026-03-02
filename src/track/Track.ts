@@ -208,87 +208,119 @@ export class Track {
         }
     }
 
-    /** Start/finish line on the track surface */
+    /** Start/finish line — neon LED strips design */
     private buildStartFinishLine() {
         const sf = this.getPointAt(0);
         const perpX = sf.tangent.z;
         const perpZ = -sf.tangent.x;
         const halfW = TRACK_WIDTH / 2;
+        const rotation = Math.atan2(perpX, perpZ);
 
-        // Checkered pattern: 8 squares wide, 2 rows
-        const squareSize = TRACK_WIDTH / 8;
-        const checkeredGroup = new THREE.Group();
+        // ── 3 neon LED strips on the ground (cyan - white - cyan) ──
+        const stripColors = [0x00ffff, 0xffffff, 0x00ffff];
+        const stripEmissive = [0x00ffff, 0xccccff, 0x00ffff];
+        const stripIntensity = [2.0, 1.5, 2.0];
 
-        const whiteMat = new THREE.MeshStandardMaterial({
-            color: 0xffffff, emissive: 0xffffff, emissiveIntensity: 0.3, flatShading: true,
-        });
-        const blackMat = new THREE.MeshStandardMaterial({
-            color: 0x111111, emissive: 0x000000, emissiveIntensity: 0, flatShading: true,
-        });
-
-        for (let row = 0; row < 2; row++) {
-            for (let col = 0; col < 8; col++) {
-                const isWhite = (row + col) % 2 === 0;
-                const geo = new THREE.PlaneGeometry(squareSize, squareSize);
-                const sq = new THREE.Mesh(geo, isWhite ? whiteMat : blackMat);
-
-                // Position along perpendicular
-                const lateralOffset = -halfW + squareSize * (col + 0.5);
-                const forwardOffset = -squareSize * 0.5 + row * squareSize;
-
-                sq.position.set(
-                    sf.pos.x + perpX * lateralOffset + sf.tangent.x * forwardOffset,
-                    sf.pos.y + 0.03,
-                    sf.pos.z + perpZ * lateralOffset + sf.tangent.z * forwardOffset,
-                );
-                sq.rotation.x = -Math.PI / 2;
-                sq.rotation.z = -Math.atan2(sf.tangent.x, sf.tangent.z);
-                checkeredGroup.add(sq);
-            }
+        for (let s = 0; s < 3; s++) {
+            const offset = (s - 1) * 1.2; // -1.2, 0, +1.2 metres apart
+            const mat = new THREE.MeshStandardMaterial({
+                color: stripColors[s],
+                emissive: stripEmissive[s],
+                emissiveIntensity: stripIntensity[s],
+            });
+            const strip = new THREE.Mesh(new THREE.PlaneGeometry(TRACK_WIDTH - 1, 0.4), mat);
+            strip.rotation.x = -Math.PI / 2;
+            strip.position.set(
+                sf.pos.x + sf.tangent.x * offset,
+                sf.pos.y + 0.04,
+                sf.pos.z + sf.tangent.z * offset,
+            );
+            strip.rotation.z = -Math.atan2(sf.tangent.x, sf.tangent.z);
+            this.group.add(strip);
         }
 
-        this.group.add(checkeredGroup);
+        // Ground glow light
+        const groundGlow = new THREE.PointLight(0x00ffff, 4, 25);
+        groundGlow.position.set(sf.pos.x, sf.pos.y + 1, sf.pos.z);
+        this.group.add(groundGlow);
 
-        // Neon gantry over start/finish
+        // ── Overhead gantry structure ──
         const gantryMat = new THREE.MeshStandardMaterial({
-            color: 0x444444, flatShading: true, metalness: 0.8, roughness: 0.4,
-        });
-        const neonMat = new THREE.MeshStandardMaterial({
-            color: 0x00ffff, emissive: 0x00ffff, emissiveIntensity: 1.5,
+            color: 0x333344, flatShading: true, metalness: 0.8, roughness: 0.3,
         });
 
-        // Left pillar
-        const pillarL = new THREE.Mesh(new THREE.BoxGeometry(0.5, 12, 0.5), gantryMat);
-        pillarL.position.set(
-            sf.pos.x - perpX * (halfW + 2), sf.pos.y + 6,
-            sf.pos.z - perpZ * (halfW + 2),
-        );
-        this.group.add(pillarL);
+        // Pillars — angled/tapered for modern look
+        for (const side of [-1, 1]) {
+            const px = sf.pos.x + perpX * (halfW + 2.5) * side;
+            const pz = sf.pos.z + perpZ * (halfW + 2.5) * side;
 
-        // Right pillar
-        const pillarR = new THREE.Mesh(new THREE.BoxGeometry(0.5, 12, 0.5), gantryMat);
-        pillarR.position.set(
-            sf.pos.x + perpX * (halfW + 2), sf.pos.y + 6,
-            sf.pos.z + perpZ * (halfW + 2),
-        );
-        this.group.add(pillarR);
+            // Main pillar
+            const pillar = new THREE.Mesh(new THREE.BoxGeometry(0.6, 14, 0.6), gantryMat);
+            pillar.position.set(px, sf.pos.y + 7, pz);
+            this.group.add(pillar);
+
+            // Pillar base accent
+            const baseMat = new THREE.MeshStandardMaterial({
+                color: 0x00ffff, emissive: 0x00ffff, emissiveIntensity: 1.0,
+            });
+            const base = new THREE.Mesh(new THREE.BoxGeometry(1.0, 0.3, 1.0), baseMat);
+            base.position.set(px, sf.pos.y + 0.15, pz);
+            this.group.add(base);
+
+            // Pillar side neon strip
+            const sideStrip = new THREE.Mesh(
+                new THREE.BoxGeometry(0.08, 12, 0.08),
+                baseMat,
+            );
+            sideStrip.position.set(px + 0.3 * side, sf.pos.y + 7, pz);
+            this.group.add(sideStrip);
+        }
 
         // Crossbar
-        const crossbar = new THREE.Mesh(new THREE.BoxGeometry(0.3, 0.3, TRACK_WIDTH + 4), gantryMat);
-        crossbar.position.set(sf.pos.x, sf.pos.y + 12, sf.pos.z);
-        crossbar.rotation.y = Math.atan2(perpX, perpZ);
+        const crossbar = new THREE.Mesh(new THREE.BoxGeometry(0.4, 0.4, TRACK_WIDTH + 5), gantryMat);
+        crossbar.position.set(sf.pos.x, sf.pos.y + 14, sf.pos.z);
+        crossbar.rotation.y = rotation;
         this.group.add(crossbar);
 
-        // Neon strip on crossbar
-        const neonStrip = new THREE.Mesh(new THREE.BoxGeometry(0.1, 0.5, TRACK_WIDTH + 2), neonMat);
-        neonStrip.position.set(sf.pos.x, sf.pos.y + 11.5, sf.pos.z);
-        neonStrip.rotation.y = Math.atan2(perpX, perpZ);
-        this.group.add(neonStrip);
+        // ── Digital screen (glowing panel under crossbar) ──
+        const screenMat = new THREE.MeshStandardMaterial({
+            color: 0x0044aa,
+            emissive: 0x0066ff,
+            emissiveIntensity: 1.2,
+            transparent: true,
+            opacity: 0.9,
+        });
+        const screen = new THREE.Mesh(new THREE.BoxGeometry(0.15, 2.0, TRACK_WIDTH * 0.6), screenMat);
+        screen.position.set(sf.pos.x, sf.pos.y + 12.5, sf.pos.z);
+        screen.rotation.y = rotation;
+        this.group.add(screen);
 
-        // Point light at gantry
-        const gantryLight = new THREE.PointLight(0x00ffff, 3, 40);
-        gantryLight.position.set(sf.pos.x, sf.pos.y + 11, sf.pos.z);
-        this.group.add(gantryLight);
+        // Screen border neon
+        const borderMat = new THREE.MeshStandardMaterial({
+            color: 0x00ffff, emissive: 0x00ffff, emissiveIntensity: 2.0,
+        });
+        const borderTop = new THREE.Mesh(new THREE.BoxGeometry(0.08, 0.08, TRACK_WIDTH * 0.62), borderMat);
+        borderTop.position.set(sf.pos.x, sf.pos.y + 13.5, sf.pos.z);
+        borderTop.rotation.y = rotation;
+        this.group.add(borderTop);
+        const borderBot = new THREE.Mesh(new THREE.BoxGeometry(0.08, 0.08, TRACK_WIDTH * 0.62), borderMat);
+        borderBot.position.set(sf.pos.x, sf.pos.y + 11.5, sf.pos.z);
+        borderBot.rotation.y = rotation;
+        this.group.add(borderBot);
+
+        // ── Overhead lights ──
+        const overheadLight = new THREE.PointLight(0x0088ff, 5, 50);
+        overheadLight.position.set(sf.pos.x, sf.pos.y + 13, sf.pos.z);
+        this.group.add(overheadLight);
+
+        // Side spotlights pointing down
+        for (const side of [-1, 1]) {
+            const sx = sf.pos.x + perpX * halfW * 0.5 * side;
+            const sz = sf.pos.z + perpZ * halfW * 0.5 * side;
+            const spot = new THREE.PointLight(0x00ffff, 2, 20);
+            spot.position.set(sx, sf.pos.y + 13.5, sz);
+            this.group.add(spot);
+        }
     }
 
     private buildEnvironment() {

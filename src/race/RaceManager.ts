@@ -3,6 +3,8 @@ import { Track } from '../track/Track';
 import { AIDriver, AIType } from '../ai/AIDriver';
 import { CHECKPOINT_T_VALUES } from '../track/TrackData';
 import { InputState } from '../InputManager';
+import { resolveCollisions, Collidable } from '../physics/CollisionSystem';
+import { TrafficSystem } from '../entities/TrafficSystem';
 
 export type RaceState = 'countdown' | 'racing' | 'finished';
 
@@ -11,11 +13,12 @@ export class RaceManager {
     state: RaceState = 'countdown';
     countdownValue = 3;
     private countdownTimer = 0;
-    private raceStarted = false; // guard against false lap triggers at start
+    private raceStarted = false;
 
     readonly player: Car;
     readonly aiDrivers: AIDriver[];
     readonly allCars: Car[];
+    traffic: TrafficSystem | null = null;
 
     /** Positions sorted: index 0 = 1st place */
     positions: Car[] = [];
@@ -39,7 +42,6 @@ export class RaceManager {
                 this.countdownValue--;
                 if (this.countdownValue < 0) {
                     this.state = 'racing';
-                    // Allow lap counting after a short delay
                     setTimeout(() => { this.raceStarted = true; }, 2000);
                 }
             }
@@ -69,6 +71,14 @@ export class RaceManager {
             this.updateTrackProgress(car, track);
         }
 
+        // ── Update traffic ──
+        if (this.traffic) {
+            this.traffic.update(dt);
+        }
+
+        // ── Resolve collisions ──
+        this.resolveAllCollisions();
+
         // ── Sort positions ──
         this.positions.sort((a, b) => {
             if (a.lap !== b.lap) return b.lap - a.lap;
@@ -78,6 +88,30 @@ export class RaceManager {
         // ── Check finish ──
         if (this.player.lap > this.totalLaps) {
             this.state = 'finished';
+        }
+    }
+
+    private resolveAllCollisions() {
+        // Collect all collidable entities
+        const raceCars: Collidable[] = this.allCars.map(c => c.state);
+        const trafficCars: Collidable[] = this.traffic ? this.traffic.getCollidables() : [];
+
+        const allEntities = [...raceCars, ...trafficCars];
+        const invulnerable = this.traffic
+            ? this.traffic.getInvulnerableSet(raceCars.length)
+            : new Set<number>();
+
+        // Resolve
+        resolveCollisions(allEntities, invulnerable);
+
+        // Mark any traffic cars that got speed reduced as "hit"
+        if (this.traffic) {
+            for (let i = 0; i < trafficCars.length; i++) {
+                const tc = trafficCars[i];
+                if (tc.speed < 15) { // was significantly slowed
+                    this.traffic.onCollision(i);
+                }
+            }
         }
     }
 
@@ -93,7 +127,6 @@ export class RaceManager {
             }
         }
 
-        // Don't count laps until race has properly started
         if (!this.raceStarted) return;
 
         // Lap completion: crossed t=0 boundary with all checkpoints
@@ -101,7 +134,6 @@ export class RaceManager {
         if (prevT > 0.9 && car.trackT < 0.1 && (car.checkpoints & allCPs) === allCPs) {
             car.completeLap();
 
-            // Notify adaptive AI
             if (car.isPlayer) {
                 const lastLapTime = car.lapTimes[car.lapTimes.length - 1];
                 for (const ai of this.aiDrivers) {

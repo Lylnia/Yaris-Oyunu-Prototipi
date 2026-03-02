@@ -7,6 +7,8 @@ import { RaceManager } from './race/RaceManager';
 import { HUD } from './ui/HUD';
 import { Minimap } from './ui/Minimap';
 import { AudioManager } from './audio/AudioManager';
+import { MusicManager } from './audio/MusicManager';
+import { TrafficSystem } from './entities/TrafficSystem';
 import { GRID_OFFSETS } from './track/TrackData';
 
 /**
@@ -25,7 +27,10 @@ export class Game {
     private hud!: HUD;
     private minimap!: Minimap;
     private audio: AudioManager;
+    private music: MusicManager;
+    private traffic!: TrafficSystem;
     private audioStarted = false;
+    private audioFadedOut = false;
 
     private player!: Car;
     private aiCars: Car[] = [];
@@ -53,6 +58,7 @@ export class Game {
 
         // ── Audio ──
         this.audio = new AudioManager();
+        this.music = new MusicManager();
 
         // ── Lighting ──
         this.setupLights();
@@ -60,6 +66,11 @@ export class Game {
         // ── Build world ──
         this.track = new Track(this.scene);
         this.setupCars();
+
+        // ── Traffic ──
+        this.traffic = new TrafficSystem(this.track, this.scene);
+
+        // ── Race ──
         this.setupRace();
 
         // ── Camera controller ──
@@ -72,11 +83,9 @@ export class Game {
 
         // ── Resize ──
         window.addEventListener('resize', () => this.onResize());
-
     }
 
     private setupLights() {
-        // Moonlight
         const dir = new THREE.DirectionalLight(0x6688bb, 1.0);
         dir.position.set(-100, 300, 150);
         dir.castShadow = true;
@@ -89,17 +98,14 @@ export class Game {
         dir.shadow.camera.bottom = -300;
         this.scene.add(dir);
 
-        // Hemisphere (sky / ground)
         const hemi = new THREE.HemisphereLight(0x334466, 0x151525, 1.2);
         this.scene.add(hemi);
 
-        // Extra ambient so nothing is pure black
         const ambient = new THREE.AmbientLight(0x222244, 0.8);
         this.scene.add(ambient);
     }
 
     private setupCars() {
-        // Get start positions from grid
         const startData = this.track.getPointAt(0);
         const startDir = Math.atan2(startData.tangent.x, startData.tangent.z);
         const perpX = startData.tangent.z;
@@ -124,6 +130,7 @@ export class Game {
 
     private setupRace() {
         this.race = new RaceManager(this.player, this.aiCars, this.track);
+        this.race.traffic = this.traffic;
     }
 
     private paused = false;
@@ -131,68 +138,150 @@ export class Game {
     private pauseMenu = document.getElementById('pause-menu')!;
     private startMenu = document.getElementById('start-menu')!;
 
+    // ── Gamepad menu navigation ──
+    private menuButtons: HTMLButtonElement[] = [];
+    private activeMenuIndex = 0;
+
+    private getPauseMenuButtons(): HTMLButtonElement[] {
+        return Array.from(this.pauseMenu.querySelectorAll('.menu-btn'));
+    }
+
+    private getFinishMenuButtons(): HTMLButtonElement[] {
+        const finishEl = document.getElementById('finish-overlay')!;
+        return Array.from(finishEl.querySelectorAll('.menu-btn'));
+    }
+
+    private updateActiveButton(buttons: HTMLButtonElement[], index: number) {
+        buttons.forEach((btn, i) => {
+            if (i === index) {
+                btn.classList.add('active-btn');
+            } else {
+                btn.classList.remove('active-btn');
+            }
+        });
+    }
+
     start() {
         this.clock.start();
 
-        // Start button
+        // Start button (keyboard or click)
         document.getElementById('btn-start')?.addEventListener('click', () => {
-            this.startMenu.style.display = 'none';
-            this.started = true;
-
-            // Check sound toggle
-            const soundCheck = document.getElementById('chk-sound') as HTMLInputElement;
-            if (soundCheck && !soundCheck.checked) {
-                this.audio.muted = true;
-            }
-
-            this.audio.init();
-            this.audioStarted = true;
+            this.beginGame();
         });
 
-        // Pause toggle
+        // Pause toggle (keyboard)
         window.addEventListener('keydown', (e) => {
             if (e.code === 'Escape' && this.started) {
-                this.paused = !this.paused;
-                this.pauseMenu.style.display = this.paused ? 'flex' : 'none';
-                if (!this.paused) this.clock.getDelta(); // reset dt after unpause
+                this.togglePause();
             }
+            // Music controls
+            if (e.code === 'KeyN') this.music.next();
+            if (e.code === 'KeyP') this.music.prev();
+            if (e.code === 'KeyM') this.music.toggle();
         });
 
-        // Resume button
+        // Menu button clicks
         document.getElementById('btn-resume')?.addEventListener('click', () => {
             this.paused = false;
             this.pauseMenu.style.display = 'none';
             this.clock.getDelta();
         });
 
-        // Restart button
         document.getElementById('btn-restart')?.addEventListener('click', () => {
             window.location.reload();
         });
 
-        // Main menu button (pause)
         document.getElementById('btn-main-menu')?.addEventListener('click', () => {
             window.location.reload();
         });
 
-        // Play again button (finish)
         document.getElementById('btn-play-again')?.addEventListener('click', () => {
             window.location.reload();
         });
 
-        // Main menu button (finish)
         document.getElementById('btn-finish-menu')?.addEventListener('click', () => {
             window.location.reload();
         });
 
+        // Music HUD buttons
+        document.getElementById('btn-music-prev')?.addEventListener('click', () => this.music.prev());
+        document.getElementById('btn-music-toggle')?.addEventListener('click', () => this.music.toggle());
+        document.getElementById('btn-music-next')?.addEventListener('click', () => this.music.next());
+
         this.loop();
+    }
+
+    private beginGame() {
+        this.startMenu.style.display = 'none';
+        this.started = true;
+
+        // Check sound toggle
+        const soundCheck = document.getElementById('chk-sound') as HTMLInputElement;
+        if (soundCheck && !soundCheck.checked) {
+            this.audio.muted = true;
+        }
+
+        this.audio.init();
+        this.audioStarted = true;
+
+        // Start music
+        this.music.play();
+    }
+
+    private togglePause() {
+        this.paused = !this.paused;
+        this.pauseMenu.style.display = this.paused ? 'flex' : 'none';
+        if (this.paused) {
+            this.menuButtons = this.getPauseMenuButtons();
+            this.activeMenuIndex = 0;
+            this.updateActiveButton(this.menuButtons, 0);
+        } else {
+            this.clock.getDelta();
+        }
+    }
+
+    private handleGamepadMenu() {
+        // Start/Options button (9) — toggle pause
+        if (this.input.isButtonJustPressed(9) && this.started) {
+            // Only in pause or racing state
+            if (this.race.state !== 'finished') {
+                this.togglePause();
+            }
+        }
+
+        // A button (0) — start game from menu, or click active button
+        if (this.input.isButtonJustPressed(0)) {
+            if (this.startMenu.style.display !== 'none') {
+                this.beginGame();
+                return;
+            }
+            if (this.menuButtons.length > 0) {
+                this.menuButtons[this.activeMenuIndex]?.click();
+            }
+        }
+
+        // D-pad up (12) / down (13) — navigate menu
+        if (this.menuButtons.length > 0) {
+            if (this.input.isButtonJustPressed(12)) {
+                this.activeMenuIndex = (this.activeMenuIndex - 1 + this.menuButtons.length) % this.menuButtons.length;
+                this.updateActiveButton(this.menuButtons, this.activeMenuIndex);
+            }
+            if (this.input.isButtonJustPressed(13)) {
+                this.activeMenuIndex = (this.activeMenuIndex + 1) % this.menuButtons.length;
+                this.updateActiveButton(this.menuButtons, this.activeMenuIndex);
+            }
+        }
     }
 
     private loop = () => {
         requestAnimationFrame(this.loop);
 
+        // Gamepad menu handling (even when paused)
+        this.handleGamepadMenu();
+        this.input.updatePrevButtons();
+
         if (!this.started || this.paused) {
-            this.clock.getDelta(); // drain clock so dt doesn't spike on resume
+            this.clock.getDelta();
             this.renderer.render(this.scene, this.camera);
             return;
         }
@@ -210,14 +299,28 @@ export class Game {
         this.cameraCtrl.update(this.player.mesh, this.player.state.speed, dt);
 
         // Audio
-        if (this.audioStarted) {
-            this.audio.update(
-                this.player.state.rpm,
-                this.player.state.isDrifting,
-                this.player.state.driftAngle,
-                input.brake,
-                this.player.state.speed,
-            );
+        if (this.audioStarted && !this.audioFadedOut) {
+            if (this.race.state === 'finished') {
+                // Fade out engine sound when race ends
+                this.audio.fadeOut();
+                this.music.fadeOut();
+                this.audioFadedOut = true;
+
+                // Setup finish menu buttons for gamepad
+                setTimeout(() => {
+                    this.menuButtons = this.getFinishMenuButtons();
+                    this.activeMenuIndex = 0;
+                    this.updateActiveButton(this.menuButtons, 0);
+                }, 100);
+            } else {
+                this.audio.update(
+                    this.player.state.rpm,
+                    this.player.state.isDrifting,
+                    this.player.state.driftAngle,
+                    input.brake,
+                    this.player.state.speed,
+                );
+            }
         }
 
         // UI

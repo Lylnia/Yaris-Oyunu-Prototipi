@@ -283,6 +283,29 @@ export class AudioManager {
         }
     }
 
+    /** Fade out all sounds over ~1s then stop */
+    fadeOut() {
+        if (!this.ctx) return;
+        const t = this.ctx.currentTime + 1.0;
+        this.engGain?.gain.linearRampToValueAtTime(0, t);
+        this.tireGain?.gain.linearRampToValueAtTime(0, t);
+        this.brakeLowGain?.gain.linearRampToValueAtTime(0, t);
+        this.brakeMidGain?.gain.linearRampToValueAtTime(0, t);
+        this.brakeHiGain?.gain.linearRampToValueAtTime(0, t);
+        if (this.masterGain) this.masterGain.gain.linearRampToValueAtTime(0, t);
+
+        // Stop oscillators after fade
+        setTimeout(() => {
+            this.engOsc1?.stop();
+            this.engOsc2?.stop();
+            this.engOsc3?.stop();
+            this.tireSource?.stop();
+            this.brakeLowSource?.stop();
+            this.brakeMidSource?.stop();
+            this.brakeHiSource?.stop();
+        }, 1200);
+    }
+
     dispose() {
         this.engOsc1?.stop();
         this.engOsc2?.stop();
