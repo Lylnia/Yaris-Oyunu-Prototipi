@@ -4,6 +4,7 @@ export interface InputState {
     throttle: number;   // 0–1
     brake: number;      // 0–1
     steer: number;      // -1 (left) to 1 (right)
+    handbrake: boolean; // Drift trigger
 }
 
 /**
@@ -46,6 +47,7 @@ export class InputManager {
                 throttle: clamp(buttons[7]?.value ?? 0, 0, 1),  // RT
                 brake: clamp(buttons[6]?.value ?? 0, 0, 1),   // LT
                 steer: clamp(axes[0] ?? 0, -1, 1),            // Left stick X
+                handbrake: buttons[1]?.pressed ?? false,      // B button
             };
         }
 
@@ -55,6 +57,7 @@ export class InputManager {
         const wantLeft = this.keys.has('ArrowLeft') || this.keys.has('KeyA') ? -1 : 0;
         const wantRight = this.keys.has('ArrowRight') || this.keys.has('KeyD') ? 1 : 0;
         const wantSteer = wantLeft + wantRight;
+        const wantHandbrake = this.keys.has('Space');
 
         this.kThrottle = this.ramp(this.kThrottle, wantThrottle, dt);
         this.kBrake = this.ramp(this.kBrake, wantBrake, dt);
@@ -64,6 +67,7 @@ export class InputManager {
             throttle: this.kThrottle,
             brake: this.kBrake,
             steer: this.kSteer,
+            handbrake: wantHandbrake,
         };
     }
 

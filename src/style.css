@@ -41,6 +41,7 @@ body {
 #speed-value {
   font-size: 72px;
   font-weight: 900;
+  font-style: italic;
   color: #0ff;
   text-shadow: 0 0 20px rgba(0, 255, 255, 0.6), 0 0 40px rgba(0, 255, 255, 0.3);
   line-height: 1;
@@ -73,8 +74,15 @@ body {
 }
 
 @keyframes gear-blink {
-  0%, 100% { opacity: 1; }
-  50% { opacity: 0.6; }
+
+  0%,
+  100% {
+    opacity: 1;
+  }
+
+  50% {
+    opacity: 0.6;
+  }
 }
 
 /* Lap Info */
@@ -95,8 +103,9 @@ body {
 #lap-time {
   font-size: 28px;
   font-weight: 700;
+  font-style: italic;
   color: #fff;
-  text-shadow: 0 0 10px rgba(255, 255, 255, 0.4);
+  text-shadow: 0 0 10px rgba(255, 255, 255, 0.8), 0 0 20px rgba(0, 255, 255, 0.4);
 }
 
 #best-lap {
@@ -115,6 +124,7 @@ body {
 #position-value {
   font-size: 64px;
   font-weight: 900;
+  font-style: italic;
   color: #ff0080;
   text-shadow: 0 0 20px rgba(255, 0, 128, 0.5);
 }
@@ -138,16 +148,12 @@ body {
   left: 40px;
   width: 180px;
   height: 180px;
-  border: 1px solid rgba(0, 255, 255, 0.3);
-  border-radius: 8px;
-  background: rgba(0, 0, 0, 0.5);
-  backdrop-filter: blur(4px);
+  opacity: 0.8;
 }
 
 #minimap-canvas {
   width: 100%;
   height: 100%;
-  border-radius: 8px;
 }
 
 /* Race Overlay */

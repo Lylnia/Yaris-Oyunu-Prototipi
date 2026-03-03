@@ -43,8 +43,10 @@ export class Minimap {
 
         // Draw track line
         ctx.beginPath();
-        ctx.strokeStyle = 'rgba(255,255,255,0.2)';
-        ctx.lineWidth = 3;
+        ctx.strokeStyle = '#0ff'; // Neon glow
+        ctx.lineWidth = 4;
+        ctx.shadowBlur = 10;
+        ctx.shadowColor = '#0ff';
         this.trackPath.forEach((p, i) => {
             const sx = p.x * this.scale + this.offsetX;
             const sz = p.z * this.scale + this.offsetZ;
@@ -53,6 +55,9 @@ export class Minimap {
         });
         ctx.closePath();
         ctx.stroke();
+
+        // Reset shadow for cars
+        ctx.shadowBlur = 0;
 
         // Draw cars
         const colors = ['#00ffff', '#ff4444', '#ffaa00', '#aa44ff'];

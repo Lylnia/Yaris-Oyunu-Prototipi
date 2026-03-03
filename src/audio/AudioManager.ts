@@ -48,7 +48,7 @@ export class AudioManager {
     private musicPlaying = false;
 
     /** Called when a new music track starts playing */
-    onTrackChange: ((trackName: string) => void) | null = null;
+    onTrackChange: ((title: string, artist: string) => void) | null = null;
 
     init() {
         if (this.started) return;
@@ -252,15 +252,15 @@ export class AudioManager {
         }
 
         // Start playing first track
-        this.playNextTrack();
+        // We do not play it automatically anymore. The Game loop will trigger it on GO!
     }
 
-    private async playNextTrack() {
+    public async playNextTrack() {
         if (!this.ctx || this.fadedOut || this.musicTracks.length === 0) return;
 
         this.currentTrackIndex = (this.currentTrackIndex + 1) % this.musicTracks.length;
         const trackUrl = this.musicTracks[this.currentTrackIndex];
-        const trackName = this.getTrackDisplayName(trackUrl);
+        const { title, artist } = this.getTrackInfo(trackUrl);
 
         try {
             let buffer = this.musicBuffers.get(trackUrl);
@@ -287,10 +287,10 @@ export class AudioManager {
 
             // Notify UI
             if (this.onTrackChange) {
-                this.onTrackChange(trackName);
+                this.onTrackChange(title, artist);
             }
 
-            console.log(`[AudioManager] Now playing: ${trackName}`);
+            console.log(`[AudioManager] Now playing: ${title} - ${artist}`);
         } catch (e) {
             console.warn(`[AudioManager] Failed to load music: ${trackUrl}`, e);
             // Try next track
@@ -300,14 +300,24 @@ export class AudioManager {
         }
     }
 
-    private getTrackDisplayName(url: string): string {
-        const filename = url.split('/').pop() || url;
+    private getTrackInfo(url: string): { title: string, artist: string } {
+        const filename = decodeURIComponent(url.split('/').pop() || url);
         // Remove extension
-        const name = filename.replace(/\.[^/.]+$/, '');
-        // Replace underscores/dashes with spaces, title case
-        return name
-            .replace(/[-_]/g, ' ')
-            .replace(/\b\w/g, c => c.toUpperCase());
+        const nameExtStr = filename.replace(/\.[^/.]+$/, '');
+        // Split by " - "
+        const parts = nameExtStr.split(' - ');
+        if (parts.length >= 2) {
+            return {
+                title: parts[0].trim(),
+                artist: parts.slice(1).join(' - ').trim()
+            };
+        }
+
+        // Fallback
+        return {
+            title: nameExtStr.replace(/[-_]/g, ' ').replace(/\b\w/g, c => c.toUpperCase()),
+            artist: 'EA Trax'
+        };
     }
 
     setMuted(muted: boolean) {

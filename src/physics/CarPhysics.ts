@@ -105,7 +105,12 @@ export function updateCarPhysics(
     /* ── Dynamic Grip ── */
     const wRear = 1 - state.weightFront;
     const frontGrip = C.baseFrontGrip * (state.weightFront / 0.5) * surfaceGrip;
-    const rearGrip = C.baseRearGrip * (wRear / 0.5) * surfaceGrip;
+    let rearGrip = C.baseRearGrip * (wRear / 0.5) * surfaceGrip;
+
+    if (input.handbrake) {
+        rearGrip *= 0.3; // Drastically reduce grip to slide
+        state.speed *= (1 - 0.5 * dt); // Handbrake slows car slightly
+    }
 
     /* ── Acceleration ── */
     if (input.throttle > 0.01) {
@@ -171,6 +176,11 @@ export function updateCarPhysics(
     /* ── Brake Oversteer ── */
     if (input.brake > 0.25 && Math.abs(input.steer) > 0.1) {
         turnRate *= (1 + input.brake * Math.abs(input.steer) * C.brakeOversteerFactor);
+    }
+
+    /* ── Handbrake Drift Initiate ── */
+    if (input.handbrake && Math.abs(input.steer) > 0.05) {
+        turnRate *= 1.8; // Kick the tail out harder
     }
 
     /* ── Update Heading ── */

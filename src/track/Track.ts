@@ -307,6 +307,7 @@ export class Track {
         this.buildGroundDetails();
         this.buildFloodlightTowers();
         this.buildParkingLots();
+        this.buildDistantMountains();
         this.buildStarfield();
     }
 
@@ -470,19 +471,53 @@ export class Track {
         const medium = buildingData.filter(b => b.h >= 30 && b.h < 50);
         const large = buildingData.filter(b => b.h >= 50);
 
+        // Texture for building windows (procedural grid)
+        const canvas = document.createElement('canvas');
+        canvas.width = 64; canvas.height = 64;
+        const ctx = canvas.getContext('2d')!;
+        ctx.fillStyle = '#000'; ctx.fillRect(0, 0, 64, 64);
+        ctx.fillStyle = '#fff';
+        for (let x = 4; x < 64; x += 12) {
+            for (let y = 4; y < 64; y += 12) {
+                if (Math.random() > 0.3) {
+                    ctx.globalAlpha = 0.4 + Math.random() * 0.6;
+                    ctx.fillRect(x, y, 6, 8);
+                }
+            }
+        }
+        const windowTex = new THREE.CanvasTexture(canvas);
+        windowTex.wrapS = THREE.RepeatWrapping;
+        windowTex.wrapT = THREE.RepeatWrapping;
+
         const buildingMat = new THREE.MeshStandardMaterial({
-            color: 0x0f0f25, flatShading: true,
+            color: 0x0f0f25,
+            flatShading: true,
+            emissiveMap: windowTex,
+            emissive: 0x88ccff, // Light blue cyan window tint
+            emissiveIntensity: 0.8,
         });
 
         const addBuildingInstances = (items: typeof buildingData, geo: THREE.BoxGeometry) => {
-            if (items.length === 0) return;
-            const inst = new THREE.InstancedMesh(geo, buildingMat, items.length);
+            const itemsGeo = geo.clone();
+            const uvs = itemsGeo.attributes.uv;
+            // Scale UVs so texture repeats based on geometry size roughly
+            if (uvs) {
+                const bw = geo.parameters.width / 10;
+                const bh = geo.parameters.height / 10;
+                for (let i = 0; i < uvs.count; i++) {
+                    const nx = uvs.getX(i);
+                    const ny = uvs.getY(i);
+                    // simple box mapping approximation
+                    uvs.setXY(i, nx * bw, ny * bh);
+                }
+            }
+            const inst = new THREE.InstancedMesh(itemsGeo, buildingMat, items.length);
             const matrix = new THREE.Matrix4();
             items.forEach((b, idx) => {
                 matrix.identity();
                 matrix.makeTranslation(b.x, b.h / 2, b.z);
-                const scaleX = b.w / 15;
-                const scaleZ = b.d / 15;
+                const scaleX = b.w / geo.parameters.width;
+                const scaleZ = b.d / geo.parameters.depth;
                 matrix.scale(new THREE.Vector3(scaleX, 1, scaleZ));
                 inst.setMatrixAt(idx, matrix);
             });
@@ -499,8 +534,8 @@ export class Track {
             items.forEach((b, idx) => {
                 matrix.identity();
                 matrix.makeTranslation(b.x, b.h, b.z);
-                const scaleX = (b.w + 0.3) / 16;
-                const scaleZ = (b.d + 0.3) / 16;
+                const scaleX = (b.w + 0.3) / geo.parameters.width;
+                const scaleZ = (b.d + 0.3) / geo.parameters.depth;
                 matrix.scale(new THREE.Vector3(scaleX, 1, scaleZ));
                 neonInst.setMatrixAt(idx, matrix);
             });
@@ -783,6 +818,45 @@ export class Track {
 
         const stars = new THREE.Points(geo, mat);
         this.group.add(stars);
+    }
+
+    private buildDistantMountains() {
+        const mountainCount = 12;
+        const radius = 900;
+        const mountainGeo = new THREE.ConeGeometry(150, 300, 6);
+        const mountainMat = new THREE.MeshStandardMaterial({
+            color: 0x050510, flatShading: true,
+            emissive: 0x020208, emissiveIntensity: 0.5,
+        });
+
+        // Glowing wireframe mountains for synthwave look
+        const wireMat = new THREE.MeshBasicMaterial({
+            color: 0xff0080, wireframe: true, transparent: true, opacity: 0.15
+        });
+
+        const rng = this.seededRNG(555);
+
+        for (let i = 0; i < mountainCount; i++) {
+            const angle = (i / mountainCount) * Math.PI * 2 + rng() * 0.5;
+            const dist = radius + rng() * 200;
+            const x = Math.cos(angle) * dist;
+            const z = Math.sin(angle) * dist;
+
+            const heightSq = 0.5 + rng() * 0.8;
+            const widthSq = 0.8 + rng() * 0.6;
+
+            const mnt = new THREE.Mesh(mountainGeo, mountainMat);
+            mnt.position.set(x, 150 * heightSq - 20, z);
+            mnt.scale.set(widthSq, heightSq, widthSq);
+            mnt.rotation.y = rng() * Math.PI;
+            this.group.add(mnt);
+
+            const wire = new THREE.Mesh(mountainGeo, wireMat);
+            wire.position.copy(mnt.position);
+            wire.scale.copy(mnt.scale).multiplyScalar(1.02);
+            wire.rotation.copy(mnt.rotation);
+            this.group.add(wire);
+        }
     }
 
     private seededRNG(seed: number) {

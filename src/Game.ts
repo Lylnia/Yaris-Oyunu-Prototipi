@@ -32,6 +32,7 @@ export class Game {
     private player!: Car;
     private aiCars: Car[] = [];
     private raceFinishHandled = false;
+    private musicStarted = false;
 
     constructor(canvas: HTMLCanvasElement) {
         // ── Renderer (optimised for Intel HD 5000) ──
@@ -80,8 +81,8 @@ export class Game {
         this.minimap = new Minimap(minimapCanvas, this.track);
 
         // ── Audio → UI callbacks ──
-        this.audio.onTrackChange = (trackName: string) => {
-            this.hud.showMusicToast(trackName);
+        this.audio.onTrackChange = (title: string, artist: string) => {
+            this.hud.showMusicToast(title, artist);
         };
         this.cameraCtrl.onModeChange = (mode) => {
             this.hud.showCameraToast(mode);
@@ -140,11 +141,11 @@ export class Game {
     private startMenu = document.getElementById('start-menu')!;
     private finishOverlay = document.getElementById('finish-overlay')!;
 
-    /** Soft reset: restart race without page reload */
     private softReset(goToMenu: boolean) {
         // Reset race
         this.race.reset();
         this.raceFinishHandled = false;
+        this.musicStarted = false;
 
         // Reset camera
         this.cameraCtrl.reset();
@@ -245,9 +246,17 @@ export class Game {
 
         const raceInput = this.race.state === 'racing'
             ? input
-            : { throttle: 0, brake: 0, steer: 0 };
+            : { throttle: 0, brake: 0, steer: 0, handbrake: false };
 
         this.race.update(dt, this.track, raceInput);
+
+        // Start music exactly on GO!
+        if (this.race.state === 'racing' && !this.musicStarted) {
+            this.musicStarted = true;
+            if (this.audioStarted) {
+                this.audio.playNextTrack();
+            }
+        }
 
         // Camera
         this.cameraCtrl.update(this.player.mesh, this.player.state.speed, dt);
