@@ -141,8 +141,7 @@ export class Track {
         geo.computeVertexNormals();
 
         const mat = new THREE.MeshStandardMaterial({
-            color: 0x555568, flatShading: true, roughness: 0.75, metalness: 0.05,
-            emissive: 0x111118, emissiveIntensity: 0.3,
+            color: 0x333333, flatShading: true, roughness: 0.9, metalness: 0.0,
         });
         const mesh = new THREE.Mesh(geo, mat);
         mesh.receiveShadow = true;
@@ -176,13 +175,10 @@ export class Track {
 
     private buildBarrierWalls() {
         const halfW = TRACK_WIDTH / 2 + 0.3;
-        const wallHeight = 1.2;
+        const wallHeight = 0.8; // Lower, like a guardrail
 
         const barrierMat = new THREE.MeshStandardMaterial({
-            color: 0xcccccc, emissive: 0x333333, emissiveIntensity: 0.3, flatShading: true,
-        });
-        const topStripeMat = new THREE.MeshStandardMaterial({
-            color: 0xff2288, emissive: 0xff0066, emissiveIntensity: 0.8, flatShading: true,
+            color: 0xaaaaaa, flatShading: true, metalness: 0.5, roughness: 0.5
         });
 
         for (const side of [-1, 1]) {
@@ -197,13 +193,6 @@ export class Track {
                 wall.position.set(wx, p.y + wallHeight / 2, wz);
                 wall.rotation.y = Math.atan2(t.x, t.z);
                 this.group.add(wall);
-
-                if (i % 18 === 0) {
-                    const stripe = new THREE.Mesh(new THREE.BoxGeometry(0.6, 0.15, 4), topStripeMat);
-                    stripe.position.set(wx, p.y + wallHeight + 0.08, wz);
-                    stripe.rotation.y = Math.atan2(t.x, t.z);
-                    this.group.add(stripe);
-                }
             }
         }
     }
@@ -220,10 +209,10 @@ export class Track {
         const checkeredGroup = new THREE.Group();
 
         const whiteMat = new THREE.MeshStandardMaterial({
-            color: 0xffffff, emissive: 0xffffff, emissiveIntensity: 0.3, flatShading: true,
+            color: 0xffffff, flatShading: true,
         });
         const blackMat = new THREE.MeshStandardMaterial({
-            color: 0x111111, emissive: 0x000000, emissiveIntensity: 0, flatShading: true,
+            color: 0x111111, flatShading: true,
         });
 
         for (let row = 0; row < 2; row++) {
@@ -249,12 +238,9 @@ export class Track {
 
         this.group.add(checkeredGroup);
 
-        // Neon gantry over start/finish
+        // Standard Truss gantry over start/finish
         const gantryMat = new THREE.MeshStandardMaterial({
-            color: 0x444444, flatShading: true, metalness: 0.8, roughness: 0.4,
-        });
-        const neonMat = new THREE.MeshStandardMaterial({
-            color: 0x00ffff, emissive: 0x00ffff, emissiveIntensity: 1.5,
+            color: 0x888888, flatShading: true, metalness: 0.8, roughness: 0.4,
         });
 
         // Left pillar
@@ -279,44 +265,29 @@ export class Track {
         crossbar.rotation.y = Math.atan2(perpX, perpZ);
         this.group.add(crossbar);
 
-        // Neon strip on crossbar
-        const neonStrip = new THREE.Mesh(new THREE.BoxGeometry(0.1, 0.5, TRACK_WIDTH + 2), neonMat);
-        neonStrip.position.set(sf.pos.x, sf.pos.y + 11.5, sf.pos.z);
-        neonStrip.rotation.y = Math.atan2(perpX, perpZ);
-        this.group.add(neonStrip);
-
-        // Point light at gantry
-        // Emissive glow only — no PointLight (GPU too weak)
-        const gantryGlow = new THREE.Mesh(
-            new THREE.BoxGeometry(4, 1, 4),
-            new THREE.MeshStandardMaterial({
-                color: 0x00ffff, emissive: 0x00ffff, emissiveIntensity: 2.0,
-            }),
-        );
-        gantryGlow.position.set(sf.pos.x, sf.pos.y + 11, sf.pos.z);
-        this.group.add(gantryGlow);
+        // Banner on crossbar
+        const bannerMat = new THREE.MeshStandardMaterial({ color: 0x2244aa, flatShading: true });
+        const banner = new THREE.Mesh(new THREE.BoxGeometry(0.5, 2.0, TRACK_WIDTH), bannerMat);
+        banner.position.set(sf.pos.x, sf.pos.y + 11.5, sf.pos.z);
+        banner.rotation.y = Math.atan2(perpX, perpZ);
+        this.group.add(banner);
     }
 
     private buildEnvironment() {
         this.buildGround();
-        this.buildTerrain();
         this.buildGrandstands();
-        this.buildNeonSigns();
-        this.buildLights();
+        this.buildBillboards();
         this.buildOuterFences();
         this.buildGroundDetails();
-        this.buildFloodlightTowers();
-        this.buildParkingLots();
+        this.buildForest();
         this.buildDistantMountains();
-        this.buildStarfield();
     }
 
     private buildGround() {
-        // Main ground (expanded to cover visible area)
+        // Main grassy ground
         const geo = new THREE.PlaneGeometry(2400, 2400);
         const mat = new THREE.MeshStandardMaterial({
-            color: 0x22223a, flatShading: true,
-            emissive: 0x0a0a18, emissiveIntensity: 0.2,
+            color: 0x3d5c2d, flatShading: true, roughness: 1.0
         });
         const ground = new THREE.Mesh(geo, mat);
         ground.rotation.x = -Math.PI / 2;
@@ -396,161 +367,15 @@ export class Track {
         towerTop.position.set(40, 38, -60);
         this.group.add(towerTop);
 
-        // ── Trees scattered inside oval ──
-        const trunkMat = new THREE.MeshStandardMaterial({ color: 0x3a2a1a, flatShading: true });
-        const leafMat = new THREE.MeshStandardMaterial({
-            color: 0x225533, flatShading: true, emissive: 0x112211, emissiveIntensity: 0.2,
-        });
-        const treeRng = this.seededRNG(77);
-
-        for (let i = 0; i < 50; i++) {
-            const tx = -80 + treeRng() * 160;
-            const tz = -180 + treeRng() * 360;
-            const distFromCenter = Math.sqrt((tx / 120) ** 2 + (tz / 250) ** 2);
-            if (distFromCenter > 0.85 || distFromCenter < 0.1) continue;
-
-            const h = 4 + treeRng() * 6;
-            const trunk = new THREE.Mesh(new THREE.CylinderGeometry(0.2, 0.3, h, 5), trunkMat);
-            trunk.position.set(tx, h / 2, tz);
-            this.group.add(trunk);
-
-            const crown = new THREE.Mesh(new THREE.ConeGeometry(1.5 + treeRng() * 1.5, h * 0.7, 6), leafMat);
-            crown.position.set(tx, h + h * 0.25, tz);
-            this.group.add(crown);
-        }
-
-        // ── Flag poles ──
-        const flagColors = [0xff0000, 0x0000ff, 0xffff00, 0x00ff00, 0xff8800];
-        for (let i = 0; i < 12; i++) {
-            const t = i / 12;
-            const { pos, tangent } = this.getPointAt(t);
-            const inX = pos.x - tangent.z * (TRACK_WIDTH / 2 + 6);
-            const inZ = pos.z + tangent.x * (TRACK_WIDTH / 2 + 6);
-
-            const pole = new THREE.Mesh(
-                new THREE.CylinderGeometry(0.08, 0.08, 10, 4),
-                new THREE.MeshStandardMaterial({ color: 0x888888, flatShading: true }),
-            );
-            pole.position.set(inX, 5, inZ);
-            this.group.add(pole);
-
-            const flag = new THREE.Mesh(
-                new THREE.BoxGeometry(2, 1.2, 0.05),
-                new THREE.MeshStandardMaterial({
-                    color: flagColors[i % flagColors.length],
-                    emissive: flagColors[i % flagColors.length],
-                    emissiveIntensity: 0.5,
-                }),
-            );
-            flag.position.set(inX + 1, 9.5, inZ);
-            this.group.add(flag);
-        }
-
-        // ── Buildings around the outside (InstancedMesh for perf) ──
-        // Categorize buildings by size for instancing
-        const buildingData: { x: number; z: number; w: number; h: number; d: number }[] = [];
-        for (let i = 0; i < 120; i++) {
-            const angle = rng() * Math.PI * 2;
-            const dist = 250 + rng() * 250;
-            const cx = Math.cos(angle) * dist;
-            const cz = Math.sin(angle) * dist * 1.3;
-
-            // Extra buffer: skip if too close to track (40m from centerline)
-            if (this.isNearTrack(cx, cz, 40)) { rng(); rng(); rng(); continue; }
-
-            buildingData.push({
-                x: cx, z: cz,
-                w: 8 + rng() * 20, h: 15 + rng() * 50, d: 8 + rng() * 20,
-            });
-            // consume the rng calls we used to do for unused features
-            rng();
-        }
-
-        // Group into 3 size buckets and use InstancedMesh
-        const small = buildingData.filter(b => b.h < 30);
-        const medium = buildingData.filter(b => b.h >= 30 && b.h < 50);
-        const large = buildingData.filter(b => b.h >= 50);
-
-        // Texture for building windows (procedural grid)
-        const canvas = document.createElement('canvas');
-        canvas.width = 64; canvas.height = 64;
-        const ctx = canvas.getContext('2d')!;
-        ctx.fillStyle = '#000'; ctx.fillRect(0, 0, 64, 64);
-        ctx.fillStyle = '#fff';
-        for (let x = 4; x < 64; x += 12) {
-            for (let y = 4; y < 64; y += 12) {
-                if (Math.random() > 0.3) {
-                    ctx.globalAlpha = 0.4 + Math.random() * 0.6;
-                    ctx.fillRect(x, y, 6, 8);
-                }
-            }
-        }
-        const windowTex = new THREE.CanvasTexture(canvas);
-        windowTex.wrapS = THREE.RepeatWrapping;
-        windowTex.wrapT = THREE.RepeatWrapping;
-
-        const buildingMat = new THREE.MeshStandardMaterial({
-            color: 0x0f0f25,
-            flatShading: true,
-            emissiveMap: windowTex,
-            emissive: 0x88ccff, // Light blue cyan window tint
-            emissiveIntensity: 0.8,
-        });
-
-        const addBuildingInstances = (items: typeof buildingData, geo: THREE.BoxGeometry) => {
-            const itemsGeo = geo.clone();
-            const uvs = itemsGeo.attributes.uv;
-            // Scale UVs so texture repeats based on geometry size roughly
-            if (uvs) {
-                const bw = geo.parameters.width / 10;
-                const bh = geo.parameters.height / 10;
-                for (let i = 0; i < uvs.count; i++) {
-                    const nx = uvs.getX(i);
-                    const ny = uvs.getY(i);
-                    // simple box mapping approximation
-                    uvs.setXY(i, nx * bw, ny * bh);
-                }
-            }
-            const inst = new THREE.InstancedMesh(itemsGeo, buildingMat, items.length);
-            const matrix = new THREE.Matrix4();
-            items.forEach((b, idx) => {
-                matrix.identity();
-                matrix.makeTranslation(b.x, b.h / 2, b.z);
-                const scaleX = b.w / geo.parameters.width;
-                const scaleZ = b.d / geo.parameters.depth;
-                matrix.scale(new THREE.Vector3(scaleX, 1, scaleZ));
-                inst.setMatrixAt(idx, matrix);
-            });
-            inst.instanceMatrix.needsUpdate = true;
-            this.group.add(inst);
-
-            // Neon edges as separate instanced mesh
-            const neonColors = [0x00ffff, 0xff0080, 0x8000ff, 0x00ff80];
-            const neonMat = new THREE.MeshStandardMaterial({
-                color: neonColors[0], emissive: neonColors[0], emissiveIntensity: 0.8,
-            });
-            const edgeGeo = new THREE.BoxGeometry(16, 0.3, 16);
-            const neonInst = new THREE.InstancedMesh(edgeGeo, neonMat, items.length);
-            items.forEach((b, idx) => {
-                matrix.identity();
-                matrix.makeTranslation(b.x, b.h, b.z);
-                const scaleX = (b.w + 0.3) / geo.parameters.width;
-                const scaleZ = (b.d + 0.3) / geo.parameters.depth;
-                matrix.scale(new THREE.Vector3(scaleX, 1, scaleZ));
-                neonInst.setMatrixAt(idx, matrix);
-            });
-            neonInst.instanceMatrix.needsUpdate = true;
-            this.group.add(neonInst);
-        };
-
-        addBuildingInstances(small, new THREE.BoxGeometry(15, 22, 15));
-        addBuildingInstances(medium, new THREE.BoxGeometry(15, 40, 15));
-        addBuildingInstances(large, new THREE.BoxGeometry(15, 60, 15));
+        // Removed buildings to give an open environment feel
     }
 
-    private buildNeonSigns() {
-        const colors = [0x00ffff, 0xff0080, 0xffff00, 0x00ff80, 0x8000ff];
+    private buildBillboards() {
         const rng = this.seededRNG(99);
+
+        // Replace neon signs with daylight solid billboards
+        const boardMat = new THREE.MeshStandardMaterial({ color: 0xdddddd, flatShading: true });
+        const postMat = new THREE.MeshStandardMaterial({ color: 0x444444, flatShading: true });
 
         for (let i = 0; i < 15; i++) {
             const t = rng();
@@ -559,53 +384,22 @@ export class Track {
             const offset = TRACK_WIDTH * 0.6 + 5 + rng() * 10;
             const sx = pos.x + tangent.z * side * offset;
             const sz = pos.z - tangent.x * side * offset;
-            const color = colors[Math.floor(rng() * colors.length)];
 
-            const mat = new THREE.MeshStandardMaterial({
-                color, emissive: color, emissiveIntensity: 1.0,
-            });
-            const sign = new THREE.Mesh(new THREE.BoxGeometry(3 + rng() * 5, 1.5 + rng() * 2, 0.2), mat);
-            sign.position.set(sx, 4 + rng() * 5, sz);
+            const sign = new THREE.Mesh(new THREE.BoxGeometry(6 + rng() * 4, 3, 0.5), boardMat);
+            sign.position.set(sx, 6 + rng() * 2, sz);
             sign.rotation.y = Math.atan2(tangent.x, tangent.z);
             this.group.add(sign);
 
-            // Support pole for bigger signs
-            if (rng() > 0.4) {
-                const poleMat = new THREE.MeshStandardMaterial({ color: 0x555555, flatShading: true });
-                const pole = new THREE.Mesh(new THREE.CylinderGeometry(0.1, 0.1, 6, 4), poleMat);
-                pole.position.set(sx, 3, sz);
-                this.group.add(pole);
-            }
+            // Support poles
+            const pole1 = new THREE.Mesh(new THREE.CylinderGeometry(0.15, 0.15, 8, 4), postMat);
+            pole1.position.set(sx + 2.5, 4, sz);
+            this.group.add(pole1);
+
+            const pole2 = new THREE.Mesh(new THREE.CylinderGeometry(0.15, 0.15, 8, 4), postMat);
+            pole2.position.set(sx - 2.5, 4, sz);
+            this.group.add(pole2);
         }
     }
-
-    private buildLights() {
-        // NO PointLights at all — Intel HD 5000 can't handle them
-        // All light posts remain visually via emissive materials
-        const postMat = new THREE.MeshStandardMaterial({ color: 0x666666, flatShading: true });
-        const headMat = new THREE.MeshStandardMaterial({
-            color: 0xffcc88, emissive: 0xffaa44, emissiveIntensity: 2.5,
-        });
-
-        // Reduce to every other post (13 total instead of 25)
-        for (let i = 0; i < 25; i += 2) {
-            const t = i / 25;
-            const { pos, tangent } = this.getPointAt(t);
-            const side = i % 4 === 0 ? 1 : -1;
-            const lx = pos.x + tangent.z * side * (TRACK_WIDTH / 2 + 3);
-            const lz = pos.z - tangent.x * side * (TRACK_WIDTH / 2 + 3);
-
-            const post = new THREE.Mesh(new THREE.CylinderGeometry(0.15, 0.2, 8, 4), postMat);
-            post.position.set(lx, 4, lz);
-            this.group.add(post);
-
-            // Bright emissive head instead of PointLight
-            const head = new THREE.Mesh(new THREE.BoxGeometry(1.0, 0.4, 1.0), headMat);
-            head.position.set(lx, 8, lz);
-            this.group.add(head);
-        }
-    }
-
     /** Outer fence behind barriers */
     private buildOuterFences() {
         const halfW = TRACK_WIDTH / 2 + 3;
@@ -642,12 +436,11 @@ export class Track {
     private buildGroundDetails() {
         const rng = this.seededRNG(123);
 
-        // Grass patches near track
         const grassMat = new THREE.MeshStandardMaterial({
-            color: 0x1a3320, flatShading: true, emissive: 0x0a1a10, emissiveIntensity: 0.1,
+            color: 0x4a7c33, flatShading: true, roughness: 1.0
         });
         const sandMat = new THREE.MeshStandardMaterial({
-            color: 0x3a3520, flatShading: true, emissive: 0x1a1a08, emissiveIntensity: 0.05,
+            color: 0x887b5a, flatShading: true, roughness: 1.0
         });
 
         for (let i = 0; i < 40; i++) {
@@ -687,6 +480,63 @@ export class Track {
         }
     }
 
+    private buildForest() {
+        const rng = this.seededRNG(888);
+        const trunkMat = new THREE.MeshStandardMaterial({ color: 0x4a3a2a, flatShading: true });
+        const leafColors = [0x225533, 0x2e6f3b, 0x1f4726, 0x3d7a44];
+
+        // Use instancing for large number of trees
+        const treeCount = 1200;
+        const trunkGeo = new THREE.CylinderGeometry(0.4, 0.6, 6, 5);
+        const crownGeo = new THREE.ConeGeometry(3.5, 8, 6);
+
+        const trunkMatrix = new THREE.Matrix4();
+        const trunkInst = new THREE.InstancedMesh(trunkGeo, trunkMat, treeCount);
+
+        // Instanced crowns needed per color
+        const crownMats = leafColors.map(c => new THREE.MeshStandardMaterial({ color: c, flatShading: true }));
+        const crownInsts = crownMats.map(mat => new THREE.InstancedMesh(crownGeo, mat, treeCount));
+        const colorCounts = [0, 0, 0, 0];
+
+        for (let i = 0; i < treeCount; i++) {
+            const angle = rng() * Math.PI * 2;
+            const dist = 60 + rng() * 300; // trees mostly outside the oval
+            const tx = Math.cos(angle) * dist * (rng() > 0.5 ? 1 : 2.5); // spread wider horizontally
+            const tz = Math.sin(angle) * dist;
+
+            // skip if on track
+            if (this.isNearTrack(tx, tz, 25)) continue;
+
+            const scale = 0.8 + rng() * 0.7;
+            const h = 6 * scale;
+
+            trunkMatrix.identity();
+            trunkMatrix.makeTranslation(tx, h / 2, tz);
+            trunkMatrix.scale(new THREE.Vector3(scale, scale, scale));
+            trunkInst.setMatrixAt(i, trunkMatrix);
+
+            const colorIdx = Math.floor(rng() * 4);
+            const cCount = colorCounts[colorIdx];
+
+            trunkMatrix.identity();
+            trunkMatrix.makeRotationY(rng() * Math.PI);
+            trunkMatrix.setPosition(tx, h + (8 * scale) * 0.4, tz);
+            trunkMatrix.scale(new THREE.Vector3(scale, scale, scale));
+            crownInsts[colorIdx].setMatrixAt(cCount, trunkMatrix);
+
+            colorCounts[colorIdx]++;
+        }
+
+        trunkInst.instanceMatrix.needsUpdate = true;
+        this.group.add(trunkInst);
+
+        crownInsts.forEach((inst, idx) => {
+            inst.count = colorCounts[idx];
+            inst.instanceMatrix.needsUpdate = true;
+            this.group.add(inst);
+        });
+    }
+
     /** Stadium floodlight towers at 4 corners */
     private buildFloodlightTowers() {
         const positions = [
@@ -698,7 +548,7 @@ export class Track {
 
         const towerMat = new THREE.MeshStandardMaterial({ color: 0x555555, flatShading: true });
         const lightHeadMat = new THREE.MeshStandardMaterial({
-            color: 0xffffcc, emissive: 0xffff88, emissiveIntensity: 2.0,
+            color: 0xffcc88, flatShading: true,
         });
 
         positions.forEach(p => {
@@ -729,7 +579,7 @@ export class Track {
             const glowHead = new THREE.Mesh(
                 new THREE.BoxGeometry(3, 2, 3),
                 new THREE.MeshStandardMaterial({
-                    color: 0xffeedd, emissive: 0xffcc88, emissiveIntensity: 3.0,
+                    color: 0xffeedd, flatShading: true,
                 }),
             );
             glowHead.position.set(p.x, 45, p.z);
@@ -821,17 +671,11 @@ export class Track {
     }
 
     private buildDistantMountains() {
-        const mountainCount = 12;
+        const mountainCount = 18;
         const radius = 900;
-        const mountainGeo = new THREE.ConeGeometry(150, 300, 6);
+        const mountainGeo = new THREE.ConeGeometry(250, 450, 8);
         const mountainMat = new THREE.MeshStandardMaterial({
-            color: 0x050510, flatShading: true,
-            emissive: 0x020208, emissiveIntensity: 0.5,
-        });
-
-        // Glowing wireframe mountains for synthwave look
-        const wireMat = new THREE.MeshBasicMaterial({
-            color: 0xff0080, wireframe: true, transparent: true, opacity: 0.15
+            color: 0x3d4a2d, flatShading: true, roughness: 1.0,
         });
 
         const rng = this.seededRNG(555);
@@ -842,20 +686,14 @@ export class Track {
             const x = Math.cos(angle) * dist;
             const z = Math.sin(angle) * dist;
 
-            const heightSq = 0.5 + rng() * 0.8;
+            const heightSq = 0.6 + rng() * 0.6;
             const widthSq = 0.8 + rng() * 0.6;
 
             const mnt = new THREE.Mesh(mountainGeo, mountainMat);
-            mnt.position.set(x, 150 * heightSq - 20, z);
+            mnt.position.set(x, 450 * heightSq * 0.5 - 50, z);
             mnt.scale.set(widthSq, heightSq, widthSq);
             mnt.rotation.y = rng() * Math.PI;
             this.group.add(mnt);
-
-            const wire = new THREE.Mesh(mountainGeo, wireMat);
-            wire.position.copy(mnt.position);
-            wire.scale.copy(mnt.scale).multiplyScalar(1.02);
-            wire.rotation.copy(mnt.rotation);
-            this.group.add(wire);
         }
     }
 

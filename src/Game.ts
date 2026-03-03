@@ -49,8 +49,8 @@ export class Game {
 
         // ── Scene ──
         this.scene = new THREE.Scene();
-        this.scene.background = new THREE.Color(0x050510);
-        this.scene.fog = new THREE.FogExp2(0x080818, 0.0015);  // stronger fog to hide draw distance
+        this.scene.background = new THREE.Color(0x87CEEB); // Sky blue
+        this.scene.fog = new THREE.FogExp2(0x87CEEB, 0.001); // Daylight fog
 
         // ── Camera ──
         this.camera = new THREE.PerspectiveCamera(65, window.innerWidth / window.innerHeight, 1, 800);
@@ -93,17 +93,14 @@ export class Game {
     }
 
     private setupLights() {
-        // Single directional light — NO shadows (Intel HD can't handle them)
-        const dir = new THREE.DirectionalLight(0x6688bb, 1.2);
+        const dir = new THREE.DirectionalLight(0xffffee, 2.5);
         dir.position.set(-100, 300, 150);
         this.scene.add(dir);
 
-        // Hemisphere (sky / ground) — cheap ambient
-        const hemi = new THREE.HemisphereLight(0x334466, 0x151525, 1.4);
+        const hemi = new THREE.HemisphereLight(0xffffff, 0x445544, 1.2);
         this.scene.add(hemi);
 
-        // Stronger ambient to compensate for no shadows
-        const ambient = new THREE.AmbientLight(0x333355, 1.0);
+        const ambient = new THREE.AmbientLight(0xffffff, 0.6);
         this.scene.add(ambient);
     }
 
@@ -114,7 +111,7 @@ export class Game {
         const perpX = startData.tangent.z;
         const perpZ = -startData.tangent.x;
 
-        const colors = [0x00ffff, 0xff3344, 0xffaa00, 0xaa44ff];
+        const colors = [0x00ffff, 0xff3344, 0xffaa00, 0xaa44ff, 0x00ff00, 0xffff00, 0xff00ff, 0xffffff];
 
         GRID_OFFSETS.forEach((offset, i) => {
             const px = startData.pos.x + perpX * offset.lane * 3 - startData.tangent.x * offset.back;

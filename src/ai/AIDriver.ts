@@ -104,7 +104,7 @@ export class AIDriver {
         }
     }
 
-    update(dt: number, playerCar: Car, currentLap: number, totalLaps: number): InputState {
+    update(dt: number, playerCar: Car, currentLap: number, totalLaps: number, allCars: Car[]): InputState {
         const t = this.car.trackT;
         const targetSpeed = this.getTargetSpeed(t, playerCar, currentLap, totalLaps);
 
@@ -229,6 +229,31 @@ export class AIDriver {
             brake = clamp(-speedErr / 15, 0.1, 0.8);
         } else {
             throttle = 0.3; // cruise
+        }
+
+        // ── Collision Avoidance ──
+        for (const other of allCars) {
+            if (other === this.car) continue;
+            const dx = other.state.px - this.car.state.px;
+            const dz = other.state.pz - this.car.state.pz;
+            const distSq = dx * dx + dz * dz;
+            if (distSq < 150) { // ~12m radius
+                const angle = Math.atan2(dx, dz);
+                let diff = angle - this.car.state.heading;
+                while (diff > Math.PI) diff -= Math.PI * 2;
+                while (diff < -Math.PI) diff += Math.PI * 2;
+
+                // If car is ahead of us
+                if (Math.abs(diff) < 0.8) {
+                    // Steer away
+                    steer -= Math.sign(diff) * clamp(1 - distSq / 150, 0, 1) * 0.8;
+                    // Brake if very close and they are slower
+                    if (distSq < 40 && other.state.speed < this.car.state.speed) {
+                        brake = Math.max(brake, 0.6);
+                        throttle *= 0.3;
+                    }
+                }
+            }
         }
 
         return { throttle, brake, steer: clamp(steer, -1, 1), handbrake: false };

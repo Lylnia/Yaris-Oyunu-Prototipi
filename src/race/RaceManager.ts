@@ -25,11 +25,10 @@ export class RaceManager {
     constructor(player: Car, aiCars: Car[], track: Track) {
         this.player = player;
         this.allCars = [player, ...aiCars];
-        this.aiDrivers = [
-            new AIDriver(aiCars[0], AIType.Consistent, track),
-            new AIDriver(aiCars[1], AIType.Aggressive, track),
-            new AIDriver(aiCars[2], AIType.Adaptive, track),
-        ];
+        this.aiDrivers = aiCars.map((car, i) => {
+            const types = [AIType.Consistent, AIType.Aggressive, AIType.Adaptive];
+            return new AIDriver(car, types[i % types.length], track);
+        });
         this.positions = [...this.allCars];
     }
 
@@ -71,7 +70,7 @@ export class RaceManager {
             car.state.isOnRoad = track.isOnRoad(car.state.px, car.state.pz);
             car.state.py = track.getElevation(car.state.px, car.state.pz);
             const aiGrip = car.state.isOnRoad ? 1.0 : 0.6;
-            const aiInput = ai.update(dt, this.player, car.lap, this.totalLaps);
+            const aiInput = ai.update(dt, this.player, car.lap, this.totalLaps, this.allCars);
             car.update(aiInput, dt, aiGrip);
             track.constrainToTrack(car.state);
             this.updateTrackProgress(car, track);
@@ -83,7 +82,16 @@ export class RaceManager {
         // ── Sort positions ──
         this.positions.sort((a, b) => {
             if (a.lap !== b.lap) return b.lap - a.lap;
-            return b.trackT - a.trackT;
+
+            let aT = a.trackT;
+            let bT = b.trackT;
+            // Handle crossover at finish line: if one is near 1.0 and other is near 0.0 with SAME lap,
+            // the one near 1.0 is actually behind.
+            if (Math.abs(aT - bT) > 0.5) {
+                if (aT > 0.5) aT -= 1.0;
+                if (bT > 0.5) bT -= 1.0;
+            }
+            return bT - aT;
         });
 
         // ── Check finish ──

@@ -43,11 +43,14 @@ export const TRACK_SEGMENTS = 600;
 /** Checkpoint t-values for lap validation */
 export const CHECKPOINT_T_VALUES = [0.08, 0.25, 0.5, 0.75];
 
-/** Start grid positions — offset from t=0 backwards */
 export const GRID_OFFSETS = [
     { lane: 0, back: 0 },
     { lane: 1, back: 10 },
     { lane: -1, back: 20 },
     { lane: 1, back: 30 },
+    { lane: 0, back: 40 },
+    { lane: -1, back: 50 },
+    { lane: 1, back: 60 },
+    { lane: 0, back: 70 },
 ];
 
