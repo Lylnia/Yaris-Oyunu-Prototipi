@@ -30,15 +30,7 @@
     <div id="minimap-container">
       <canvas id="minimap-canvas" width="180" height="180"></canvas>
     </div>
-    <!-- Music info -->
-    <div id="music-display">
-      <span id="music-track-name">♫ --</span>
-      <div id="music-controls">
-        <button id="btn-music-prev">⏮</button>
-        <button id="btn-music-toggle">⏯</button>
-        <button id="btn-music-next">⏭</button>
-      </div>
-    </div>
+    <div id="music-toast"></div>
   </div>
 
   <!-- Race Start Overlay -->
@@ -57,17 +49,15 @@
         <span>🔊 Sound</span>
       </label>
     </div>
-    <p id="controls-hint">↑W Gas &nbsp; ↓S Brake/Reverse &nbsp; ←→AD Steer &nbsp; ESC Pause</p>
-    <p id="controls-hint2">🎵 N Next Track &nbsp; P Prev Track &nbsp; M Music On/Off</p>
-    <p id="controls-hint3">🎮 RT Gas &nbsp; LT Brake &nbsp; Start Pause &nbsp; A Select</p>
+    <p id="controls-hint">↑W Gas &nbsp; ↓S Brake/Reverse &nbsp; ←→AD Steer &nbsp; C Camera &nbsp; ESC Pause</p>
   </div>
 
   <!-- Pause Menu -->
   <div id="pause-menu" style="display:none;">
     <h2>PAUSED</h2>
-    <button id="btn-resume" class="menu-btn active-btn">RESUME</button>
-    <button id="btn-restart" class="menu-btn">RESTART</button>
-    <button id="btn-main-menu" class="menu-btn">MAIN MENU</button>
+    <button id="btn-resume">RESUME</button>
+    <button id="btn-restart">RESTART</button>
+    <button id="btn-main-menu">MAIN MENU</button>
   </div>
 
   <!-- Finish Overlay -->
@@ -77,8 +67,8 @@
       <div id="finish-position">P1</div>
       <div id="finish-times"></div>
       <div id="finish-buttons">
-        <button id="btn-play-again" class="menu-btn active-btn">PLAY AGAIN</button>
-        <button id="btn-finish-menu" class="menu-btn">MAIN MENU</button>
+        <button id="btn-play-again">PLAY AGAIN</button>
+        <button id="btn-finish-menu">MAIN MENU</button>
       </div>
     </div>
   </div>

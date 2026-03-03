@@ -73,15 +73,8 @@ body {
 }
 
 @keyframes gear-blink {
-
-  0%,
-  100% {
-    opacity: 1;
-  }
-
-  50% {
-    opacity: 0.6;
-  }
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.6; }
 }
 
 /* Lap Info */
@@ -138,61 +131,23 @@ body {
   margin-left: 4px;
 }
 
-/* Minimap — no border, transparent background */
+/* Minimap */
 #minimap-container {
   position: absolute;
   bottom: 40px;
   left: 40px;
   width: 180px;
   height: 180px;
-  border: none;
-  background: transparent;
+  border: 1px solid rgba(0, 255, 255, 0.3);
+  border-radius: 8px;
+  background: rgba(0, 0, 0, 0.5);
+  backdrop-filter: blur(4px);
 }
 
 #minimap-canvas {
   width: 100%;
   height: 100%;
-}
-
-/* Music Display */
-#music-display {
-  position: absolute;
-  bottom: 40px;
-  left: 50%;
-  transform: translateX(-50%);
-  text-align: center;
-  pointer-events: auto;
-}
-
-#music-track-name {
-  font-size: 11px;
-  color: rgba(255, 255, 255, 0.4);
-  letter-spacing: 1px;
-  display: block;
-  margin-bottom: 4px;
-}
-
-#music-controls {
-  display: flex;
-  gap: 6px;
-  justify-content: center;
-}
-
-#music-controls button {
-  font-size: 14px;
-  background: transparent;
-  border: 1px solid rgba(255, 255, 255, 0.2);
-  color: rgba(255, 255, 255, 0.5);
-  padding: 4px 10px;
-  cursor: pointer;
-  border-radius: 4px;
-  font-family: inherit;
-  transition: all 0.2s;
-}
-
-#music-controls button:hover {
-  border-color: #0ff;
-  color: #0ff;
+  border-radius: 8px;
 }
 
 /* Race Overlay */
@@ -255,8 +210,12 @@ body {
 }
 
 /* Buttons (shared) */
-.menu-btn,
-#btn-start {
+#btn-start,
+#btn-resume,
+#btn-restart,
+#btn-main-menu,
+#btn-play-again,
+#btn-finish-menu {
   font-family: 'Orbitron', sans-serif;
   font-size: 20px;
   font-weight: 700;
@@ -270,31 +229,15 @@ body {
   transition: all 0.2s;
 }
 
-.menu-btn:hover,
 #btn-start:hover,
-.menu-btn.active-btn {
+#btn-resume:hover,
+#btn-restart:hover,
+#btn-main-menu:hover,
+#btn-play-again:hover,
+#btn-finish-menu:hover {
   background: #ff0080;
   color: #fff;
   transform: scale(1.05);
-}
-
-/* Outline buttons */
-#btn-restart,
-#btn-main-menu,
-#btn-finish-menu {
-  background: transparent;
-  color: #0ff;
-  border: 2px solid #0ff;
-}
-
-#btn-restart:hover,
-#btn-main-menu:hover,
-#btn-finish-menu:hover,
-#btn-restart.active-btn,
-#btn-main-menu.active-btn,
-#btn-finish-menu.active-btn {
-  background: #0ff;
-  color: #000;
 }
 
 #start-options {
@@ -317,17 +260,11 @@ body {
   accent-color: #0ff;
 }
 
-#controls-hint,
-#controls-hint2,
-#controls-hint3 {
-  font-size: 11px;
-  color: rgba(255, 255, 255, 0.25);
-  margin-top: 8px;
-  letter-spacing: 1px;
-}
-
 #controls-hint {
+  font-size: 12px;
+  color: rgba(255, 255, 255, 0.35);
   margin-top: 30px;
+  letter-spacing: 2px;
 }
 
 /* Pause Menu */
@@ -348,6 +285,19 @@ body {
   color: #ff0080;
   text-shadow: 0 0 20px rgba(255, 0, 128, 0.5);
   margin-bottom: 30px;
+}
+
+#btn-restart,
+#btn-main-menu {
+  background: transparent;
+  color: #0ff;
+  border: 2px solid #0ff;
+}
+
+#btn-restart:hover,
+#btn-main-menu:hover {
+  background: #0ff;
+  color: #000;
 }
 
 /* Finish Overlay */
@@ -407,4 +357,54 @@ body {
   gap: 12px;
   justify-content: center;
   flex-wrap: wrap;
+}
+
+#btn-finish-menu {
+  background: transparent;
+  color: #0ff;
+  border: 2px solid #0ff;
+}
+
+#btn-finish-menu:hover {
+  background: #0ff;
+  color: #000;
+}
+
+/* Music / Camera Toast (NFS style) */
+#music-toast {
+  position: absolute;
+  top: 20px;
+  left: 50%;
+  transform: translateX(-50%) translateY(-80px);
+  background: rgba(0, 0, 0, 0.75);
+  backdrop-filter: blur(8px);
+  border: 1px solid rgba(0, 255, 255, 0.3);
+  border-radius: 8px;
+  padding: 10px 24px;
+  font-size: 13px;
+  color: #fff;
+  letter-spacing: 1px;
+  white-space: nowrap;
+  pointer-events: none;
+  opacity: 0;
+  transition: transform 0.5s cubic-bezier(0.16, 1, 0.3, 1), opacity 0.5s ease;
+  z-index: 30;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+#music-toast.visible {
+  transform: translateX(-50%) translateY(0);
+  opacity: 1;
+}
+
+.music-icon {
+  font-size: 18px;
+  color: #0ff;
+}
+
+.music-name {
+  color: #0ff;
+  font-weight: 700;
 }

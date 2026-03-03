@@ -2,6 +2,7 @@ import { RaceManager } from '../race/RaceManager';
 
 /**
  * Updates the HTML HUD overlay every frame.
+ * Also handles toast notifications for music and camera changes.
  */
 export class HUD {
     private speedEl = document.getElementById('speed-value')!;
@@ -16,6 +17,9 @@ export class HUD {
     private finishOverlay = document.getElementById('finish-overlay')!;
     private finishPos = document.getElementById('finish-position')!;
     private finishTimes = document.getElementById('finish-times')!;
+    private musicToast = document.getElementById('music-toast')!;
+
+    private musicToastTimer: ReturnType<typeof setTimeout> | null = null;
 
     update(race: RaceManager) {
         const car = race.player;
@@ -85,6 +89,42 @@ export class HUD {
             });
             this.finishTimes.innerHTML = timesHTML;
         }
+    }
+
+    /** Show NFS-style music track notification */
+    showMusicToast(trackName: string) {
+        if (!this.musicToast) return;
+        this.musicToast.innerHTML = `<span class="music-icon">♫</span> <span class="music-name">${trackName}</span>`;
+        this.musicToast.classList.add('visible');
+
+        // Clear previous timer
+        if (this.musicToastTimer) clearTimeout(this.musicToastTimer);
+
+        // Hide after 4 seconds
+        this.musicToastTimer = setTimeout(() => {
+            this.musicToast.classList.remove('visible');
+        }, 4000);
+    }
+
+    /** Show camera mode notification */
+    showCameraToast(mode: string) {
+        if (!this.musicToast) return;
+        this.musicToast.innerHTML = `<span class="music-icon">📷</span> <span class="music-name">${mode} Cam</span>`;
+        this.musicToast.classList.add('visible');
+
+        if (this.musicToastTimer) clearTimeout(this.musicToastTimer);
+        this.musicToastTimer = setTimeout(() => {
+            this.musicToast.classList.remove('visible');
+        }, 2000);
+    }
+
+    /** Reset HUD for soft restart */
+    reset() {
+        this.bestLapEl.textContent = 'BEST --:--.---';
+        this.finishOverlay.style.display = 'none';
+        this.finishTimes.innerHTML = '';
+        this.countdownEl.textContent = '';
+        this.countdownEl.className = '';
     }
 
     private formatTime(seconds: number): string {

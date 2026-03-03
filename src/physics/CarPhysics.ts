@@ -18,8 +18,8 @@ export const CAR_CONFIG = {
     brakeRearRatio: 0.30,              // 30% rear
 
     /* Grip */
-    baseFrontGrip: 0.85,
-    baseRearGrip: 0.68,
+    baseFrontGrip: 0.95,
+    baseRearGrip: 0.82,
 
     /* Steering (speed-dependent) */
     maxSteerAngleLow: deg2rad(22),     // at 0 km/h

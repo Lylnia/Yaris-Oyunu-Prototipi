@@ -9,7 +9,6 @@ export interface InputState {
 /**
  * Reads keyboard and gamepad inputs.
  * Analog support via Gamepad API; keyboard uses digital-to-analog smoothing.
- * Also provides gamepad button state for menu navigation.
  */
 export class InputManager {
     private keys = new Set<string>();
@@ -23,9 +22,6 @@ export class InputManager {
     private readonly SMOOTH_UP = 6;   // ramp-up per second
     private readonly SMOOTH_DOWN = 8; // ramp-down per second
 
-    /* Gamepad button edge detection */
-    private prevButtons: boolean[] = [];
-
     constructor() {
         window.addEventListener('keydown', e => this.keys.add(e.code));
         window.addEventListener('keyup', e => this.keys.delete(e.code));
@@ -35,16 +31,12 @@ export class InputManager {
         window.addEventListener('gamepaddisconnected', () => { this.pad = null; });
     }
 
-    /** Refresh the gamepad snapshot — must be called before reading buttons */
-    private refreshPad() {
+    update(dt: number): InputState {
+        /* Refresh gamepad snapshot */
         if (this.pad) {
             const pads = navigator.getGamepads();
             if (pads[this.pad.index]) this.pad = pads[this.pad.index];
         }
-    }
-
-    update(dt: number): InputState {
-        this.refreshPad();
 
         /* ── Gamepad (analog) ── */
         if (this.pad) {
@@ -73,32 +65,6 @@ export class InputManager {
             brake: this.kBrake,
             steer: this.kSteer,
         };
-    }
-
-    /**
-     * Returns true the frame a gamepad button is first pressed (edge-triggered).
-     * Standard mapping: 0=A, 1=B, 9=Start/Options, 12=DpadUp, 13=DpadDown
-     */
-    isButtonJustPressed(index: number): boolean {
-        this.refreshPad();
-        if (!this.pad) return false;
-        const pressed = this.pad.buttons[index]?.pressed ?? false;
-        const wasPrev = this.prevButtons[index] ?? false;
-        return pressed && !wasPrev;
-    }
-
-    /** Must be called at end of frame to track button edges */
-    updatePrevButtons() {
-        if (!this.pad) {
-            this.prevButtons = [];
-            return;
-        }
-        this.prevButtons = this.pad.buttons.map(b => b.pressed);
-    }
-
-    /** Whether a gamepad is connected */
-    get hasGamepad(): boolean {
-        return this.pad !== null;
     }
 
     private ramp(current: number, target: number, dt: number): number {

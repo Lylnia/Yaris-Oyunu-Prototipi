@@ -4,7 +4,6 @@ import { TRACK_SEGMENTS } from '../track/TrackData';
 
 /**
  * Draws a simple 2D minimap on a canvas overlay.
- * No border — just thick phosphorescent track line with glow effect.
  */
 export class Minimap {
     private ctx: CanvasRenderingContext2D;
@@ -42,15 +41,10 @@ export class Minimap {
         const h = this.canvas.height;
         ctx.clearRect(0, 0, w, h);
 
-        // Draw track line — thick phosphorescent green with glow
-        ctx.save();
-
-        // Outer glow
+        // Draw track line
         ctx.beginPath();
-        ctx.strokeStyle = '#00ff66';
-        ctx.lineWidth = 8;
-        ctx.shadowColor = '#00ff66';
-        ctx.shadowBlur = 15;
+        ctx.strokeStyle = 'rgba(255,255,255,0.2)';
+        ctx.lineWidth = 3;
         this.trackPath.forEach((p, i) => {
             const sx = p.x * this.scale + this.offsetX;
             const sz = p.z * this.scale + this.offsetZ;
@@ -59,34 +53,12 @@ export class Minimap {
         });
         ctx.closePath();
         ctx.stroke();
-
-        // Inner bright core
-        ctx.beginPath();
-        ctx.strokeStyle = '#66ffaa';
-        ctx.lineWidth = 4;
-        ctx.shadowColor = '#00ff66';
-        ctx.shadowBlur = 8;
-        this.trackPath.forEach((p, i) => {
-            const sx = p.x * this.scale + this.offsetX;
-            const sz = p.z * this.scale + this.offsetZ;
-            if (i === 0) ctx.moveTo(sx, h - sz);
-            else ctx.lineTo(sx, h - sz);
-        });
-        ctx.closePath();
-        ctx.stroke();
-
-        ctx.restore();
 
         // Draw cars
         const colors = ['#00ffff', '#ff4444', '#ffaa00', '#aa44ff'];
         cars.forEach((car, i) => {
             const sx = car.state.px * this.scale + this.offsetX;
             const sz = car.state.pz * this.scale + this.offsetZ;
-
-            ctx.save();
-            ctx.shadowColor = colors[i] || '#ffffff';
-            ctx.shadowBlur = car.isPlayer ? 10 : 5;
-
             ctx.beginPath();
             ctx.fillStyle = colors[i] || '#ffffff';
             ctx.arc(sx, h - sz, car.isPlayer ? 5 : 3.5, 0, Math.PI * 2);
@@ -96,7 +68,6 @@ export class Minimap {
                 ctx.lineWidth = 1.5;
                 ctx.stroke();
             }
-            ctx.restore();
         });
     }
 }

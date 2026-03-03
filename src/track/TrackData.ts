@@ -51,8 +51,3 @@ export const GRID_OFFSETS = [
     { lane: 1, back: 30 },
 ];
 
-/** No tunnel in oval track */
-export const TUNNEL_T_RANGE: [number, number] = [0, 0];
-
-/** Sector boundaries for timing */
-export const SECTOR_BOUNDARIES = [0.0, 0.33, 0.66];

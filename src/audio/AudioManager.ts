@@ -5,11 +5,13 @@ import { clamp } from '../utils/MathUtils';
  * Engine: three oscillators (fundamental + 2nd harmonic + 3rd harmonic) for rich, natural sound.
  * Tires: bandpass-filtered noise with dynamic frequency.
  * Brake: multi-layered rumble + disc squeal + high-frequency hiss.
+ * Music: auto-discovers and plays all tracks from public/music/.
  */
 export class AudioManager {
     private ctx: AudioContext | null = null;
     private started = false;
     muted = false;
+    private fadedOut = false;
 
     // Engine
     private engOsc1: OscillatorNode | null = null;
@@ -37,10 +39,22 @@ export class AudioManager {
     // Master gain for muting
     private masterGain: GainNode | null = null;
 
+    // ── Music system ──
+    private musicGain: GainNode | null = null;
+    private musicSource: AudioBufferSourceNode | null = null;
+    private musicTracks: string[] = [];
+    private musicBuffers: Map<string, AudioBuffer> = new Map();
+    private currentTrackIndex = -1;
+    private musicPlaying = false;
+
+    /** Called when a new music track starts playing */
+    onTrackChange: ((trackName: string) => void) | null = null;
+
     init() {
         if (this.started) return;
         this.ctx = new AudioContext();
         this.started = true;
+        this.fadedOut = false;
 
         // Master gain
         this.masterGain = this.ctx.createGain();
@@ -192,6 +206,141 @@ export class AudioManager {
         brakeHiFilter.connect(this.brakeHiGain);
         this.brakeHiGain.connect(this.masterGain);
         this.brakeHiSource.start();
+
+        // ── Music gain node ──
+        this.musicGain = this.ctx.createGain();
+        this.musicGain.gain.value = 0.25; // music volume (lower than SFX)
+        this.musicGain.connect(this.masterGain);
+
+        // ── Auto-discover and play music ──
+        this.discoverAndPlayMusic();
+    }
+
+    /** Discover music files from public/music/ directory */
+    private async discoverAndPlayMusic() {
+        if (!this.ctx) return;
+
+        // Try to fetch a directory listing — Vite dev server serves directory index
+        // We try common audio extensions
+        const extensions = ['mp3', 'ogg', 'wav', 'flac', 'm4a', 'aac', 'webm'];
+        const discoveredTracks: string[] = [];
+
+        // Approach: try fetching an index page from /music/, parse for audio files
+        try {
+            const resp = await fetch('/music/');
+            if (resp.ok) {
+                const html = await resp.text();
+                // Parse links from directory listing (Vite dev server format)
+                const linkRegex = /href="([^"]+\.(mp3|ogg|wav|flac|m4a|aac|webm))"/gi;
+                let match;
+                while ((match = linkRegex.exec(html)) !== null) {
+                    const filename = match[1];
+                    // Ensure full path
+                    const path = filename.startsWith('/') ? filename : `/music/${filename}`;
+                    discoveredTracks.push(path);
+                }
+            }
+        } catch {
+            // Directory listing not available
+        }
+
+        // Fallback: try numbered tracks (track1.mp3 through track20.mp3) and any common names
+        if (discoveredTracks.length === 0) {
+            const candidates: string[] = [];
+            for (let i = 1; i <= 20; i++) {
+                for (const ext of extensions) {
+                    candidates.push(`/music/track${i}.${ext}`);
+                }
+            }
+            for (const ext of extensions) {
+                candidates.push(`/music/bgm.${ext}`);
+                candidates.push(`/music/background.${ext}`);
+                candidates.push(`/music/race.${ext}`);
+            }
+
+            // Probe each candidate with HEAD request
+            const probes = candidates.map(async (url) => {
+                try {
+                    const r = await fetch(url, { method: 'HEAD' });
+                    if (r.ok) discoveredTracks.push(url);
+                } catch { /* skip */ }
+            });
+            await Promise.all(probes);
+        }
+
+        if (discoveredTracks.length === 0) {
+            console.log('[AudioManager] No music files found in /music/');
+            return;
+        }
+
+        // Sort for consistent order
+        discoveredTracks.sort();
+        this.musicTracks = discoveredTracks;
+        console.log(`[AudioManager] Found ${this.musicTracks.length} music track(s):`, this.musicTracks);
+
+        // Shuffle playlist
+        for (let i = this.musicTracks.length - 1; i > 0; i--) {
+            const j = Math.floor(Math.random() * (i + 1));
+            [this.musicTracks[i], this.musicTracks[j]] = [this.musicTracks[j], this.musicTracks[i]];
+        }
+
+        // Start playing first track
+        this.playNextTrack();
+    }
+
+    private async playNextTrack() {
+        if (!this.ctx || this.fadedOut || this.musicTracks.length === 0) return;
+
+        this.currentTrackIndex = (this.currentTrackIndex + 1) % this.musicTracks.length;
+        const trackUrl = this.musicTracks[this.currentTrackIndex];
+        const trackName = this.getTrackDisplayName(trackUrl);
+
+        try {
+            let buffer = this.musicBuffers.get(trackUrl);
+            if (!buffer) {
+                const resp = await fetch(trackUrl);
+                const arrayBuf = await resp.arrayBuffer();
+                buffer = await this.ctx.decodeAudioData(arrayBuf);
+                this.musicBuffers.set(trackUrl, buffer);
+            }
+
+            // Stop previous source
+            if (this.musicSource) {
+                try { this.musicSource.stop(); } catch { /* ok */ }
+            }
+
+            this.musicSource = this.ctx.createBufferSource();
+            this.musicSource.buffer = buffer;
+            this.musicSource.connect(this.musicGain!);
+            this.musicSource.onended = () => {
+                if (!this.fadedOut) this.playNextTrack();
+            };
+            this.musicSource.start();
+            this.musicPlaying = true;
+
+            // Notify UI
+            if (this.onTrackChange) {
+                this.onTrackChange(trackName);
+            }
+
+            console.log(`[AudioManager] Now playing: ${trackName}`);
+        } catch (e) {
+            console.warn(`[AudioManager] Failed to load music: ${trackUrl}`, e);
+            // Try next track
+            if (this.musicTracks.length > 1) {
+                this.playNextTrack();
+            }
+        }
+    }
+
+    private getTrackDisplayName(url: string): string {
+        const filename = url.split('/').pop() || url;
+        // Remove extension
+        const name = filename.replace(/\.[^/.]+$/, '');
+        // Replace underscores/dashes with spaces, title case
+        return name
+            .replace(/[-_]/g, ' ')
+            .replace(/\b\w/g, c => c.toUpperCase());
     }
 
     setMuted(muted: boolean) {
@@ -201,8 +350,45 @@ export class AudioManager {
         }
     }
 
+    /** Fade out all audio over ~1 second (for race finish) */
+    fadeOut() {
+        if (!this.ctx || !this.masterGain || this.fadedOut) return;
+        this.fadedOut = true;
+        const t = this.ctx.currentTime;
+        this.masterGain.gain.setValueAtTime(this.masterGain.gain.value, t);
+        this.masterGain.gain.linearRampToValueAtTime(0, t + 1.0);
+    }
+
+    /** Reset audio state for soft restart */
+    reset() {
+        // Stop music
+        if (this.musicSource) {
+            try { this.musicSource.stop(); } catch { /* ok */ }
+            this.musicSource = null;
+        }
+        this.musicPlaying = false;
+        this.currentTrackIndex = -1;
+        this.fadedOut = false;
+
+        // Restore master gain
+        if (this.masterGain) {
+            this.masterGain.gain.cancelScheduledValues(0);
+            this.masterGain.gain.value = this.muted ? 0 : 1;
+        }
+
+        // Restart music playlist
+        if (this.musicTracks.length > 0) {
+            // Re-shuffle
+            for (let i = this.musicTracks.length - 1; i > 0; i--) {
+                const j = Math.floor(Math.random() * (i + 1));
+                [this.musicTracks[i], this.musicTracks[j]] = [this.musicTracks[j], this.musicTracks[i]];
+            }
+            this.playNextTrack();
+        }
+    }
+
     update(rpm: number, isDrifting: boolean, driftAngle: number, braking: number, speed: number) {
-        if (!this.ctx) return;
+        if (!this.ctx || this.fadedOut) return;
         const t = this.ctx.currentTime + 0.05;
 
         // ── Engine ──
@@ -283,29 +469,6 @@ export class AudioManager {
         }
     }
 
-    /** Fade out all sounds over ~1s then stop */
-    fadeOut() {
-        if (!this.ctx) return;
-        const t = this.ctx.currentTime + 1.0;
-        this.engGain?.gain.linearRampToValueAtTime(0, t);
-        this.tireGain?.gain.linearRampToValueAtTime(0, t);
-        this.brakeLowGain?.gain.linearRampToValueAtTime(0, t);
-        this.brakeMidGain?.gain.linearRampToValueAtTime(0, t);
-        this.brakeHiGain?.gain.linearRampToValueAtTime(0, t);
-        if (this.masterGain) this.masterGain.gain.linearRampToValueAtTime(0, t);
-
-        // Stop oscillators after fade
-        setTimeout(() => {
-            this.engOsc1?.stop();
-            this.engOsc2?.stop();
-            this.engOsc3?.stop();
-            this.tireSource?.stop();
-            this.brakeLowSource?.stop();
-            this.brakeMidSource?.stop();
-            this.brakeHiSource?.stop();
-        }, 1200);
-    }
-
     dispose() {
         this.engOsc1?.stop();
         this.engOsc2?.stop();
@@ -314,6 +477,9 @@ export class AudioManager {
         this.brakeLowSource?.stop();
         this.brakeMidSource?.stop();
         this.brakeHiSource?.stop();
+        if (this.musicSource) {
+            try { this.musicSource.stop(); } catch { /* ok */ }
+        }
         this.ctx?.close();
     }
 }

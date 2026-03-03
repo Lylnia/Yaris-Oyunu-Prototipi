@@ -60,15 +60,17 @@ export function createCarModel(color: number = 0x00ffff): THREE.Group {
     car.add(headlightBeam);
 
     // ── Tail lights ──
-    [[-0.6, 0.45, -2.12], [0.6, 0.45, -2.12]].forEach(([x, y, z]) => {
-        const tl = new THREE.Mesh(new THREE.BoxGeometry(0.35, 0.12, 0.05), tailMat);
+    [[-0.6, 0.45, -2.12], [0.6, 0.45, -2.12]].forEach(([x, y, z], i) => {
+        const tl = new THREE.Mesh(new THREE.BoxGeometry(0.35, 0.12, 0.05), tailMat.clone());
         tl.position.set(x, y, z);
+        tl.name = `tailLight${i}`;
         car.add(tl);
     });
 
     // ── Tail light glow ──
     const tailGlow = new THREE.PointLight(0xff0000, 0.8, 10);
     tailGlow.position.set(0, 0.45, -2.3);
+    tailGlow.name = 'tailGlow';
     car.add(tailGlow);
 
     // ── Neon side strips ──
