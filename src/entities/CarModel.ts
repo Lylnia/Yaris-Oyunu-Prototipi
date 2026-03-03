@@ -54,10 +54,15 @@ export function createCarModel(color: number = 0x00ffff): THREE.Group {
         car.add(hl);
     });
 
-    // ── Headlight point light (illuminates road ahead) ──
-    const headlightBeam = new THREE.PointLight(0xffffff, 1.5, 25);
-    headlightBeam.position.set(0, 0.5, 2.5);
-    car.add(headlightBeam);
+    // ── Headlight glow (emissive only — no PointLight for GPU perf) ──
+    const headGlow = new THREE.Mesh(
+        new THREE.BoxGeometry(1.2, 0.3, 0.1),
+        new THREE.MeshStandardMaterial({
+            color: 0xffffff, emissive: 0xffffff, emissiveIntensity: 2.5,
+        }),
+    );
+    headGlow.position.set(0, 0.45, 2.15);
+    car.add(headGlow);
 
     // ── Tail lights ──
     [[-0.6, 0.45, -2.12], [0.6, 0.45, -2.12]].forEach(([x, y, z], i) => {
@@ -67,11 +72,14 @@ export function createCarModel(color: number = 0x00ffff): THREE.Group {
         car.add(tl);
     });
 
-    // ── Tail light glow ──
-    const tailGlow = new THREE.PointLight(0xff0000, 0.8, 10);
-    tailGlow.position.set(0, 0.45, -2.3);
-    tailGlow.name = 'tailGlow';
-    car.add(tailGlow);
+    // ── Tail light glow (emissive mesh — no PointLight) ──
+    const tailGlowMesh = new THREE.Mesh(
+        new THREE.BoxGeometry(1.4, 0.2, 0.1),
+        tailMat.clone(),
+    );
+    tailGlowMesh.position.set(0, 0.45, -2.15);
+    tailGlowMesh.name = 'tailGlow';
+    car.add(tailGlowMesh);
 
     // ── Neon side strips ──
     const stripMat = new THREE.MeshStandardMaterial({

@@ -286,13 +286,20 @@ export class Track {
         this.group.add(neonStrip);
 
         // Point light at gantry
-        const gantryLight = new THREE.PointLight(0x00ffff, 3, 40);
-        gantryLight.position.set(sf.pos.x, sf.pos.y + 11, sf.pos.z);
-        this.group.add(gantryLight);
+        // Emissive glow only — no PointLight (GPU too weak)
+        const gantryGlow = new THREE.Mesh(
+            new THREE.BoxGeometry(4, 1, 4),
+            new THREE.MeshStandardMaterial({
+                color: 0x00ffff, emissive: 0x00ffff, emissiveIntensity: 2.0,
+            }),
+        );
+        gantryGlow.position.set(sf.pos.x, sf.pos.y + 11, sf.pos.z);
+        this.group.add(gantryGlow);
     }
 
     private buildEnvironment() {
         this.buildGround();
+        this.buildTerrain();
         this.buildGrandstands();
         this.buildNeonSigns();
         this.buildLights();
@@ -304,7 +311,8 @@ export class Track {
     }
 
     private buildGround() {
-        const geo = new THREE.PlaneGeometry(1200, 1200);
+        // Main ground (expanded to cover visible area)
+        const geo = new THREE.PlaneGeometry(2400, 2400);
         const mat = new THREE.MeshStandardMaterial({
             color: 0x22223a, flatShading: true,
             emissive: 0x0a0a18, emissiveIntensity: 0.2,
@@ -442,16 +450,19 @@ export class Track {
         const buildingData: { x: number; z: number; w: number; h: number; d: number }[] = [];
         for (let i = 0; i < 120; i++) {
             const angle = rng() * Math.PI * 2;
-            const dist = 180 + rng() * 300;
+            const dist = 250 + rng() * 250;
             const cx = Math.cos(angle) * dist;
-            const cz = Math.sin(angle) * dist * 1.5;
-            if (this.isOnRoad(cx, cz)) continue;
+            const cz = Math.sin(angle) * dist * 1.3;
+
+            // Extra buffer: skip if too close to track (40m from centerline)
+            if (this.isNearTrack(cx, cz, 40)) { rng(); rng(); rng(); continue; }
+
             buildingData.push({
                 x: cx, z: cz,
-                w: 8 + rng() * 20, h: 15 + rng() * 60, d: 8 + rng() * 20,
+                w: 8 + rng() * 20, h: 15 + rng() * 50, d: 8 + rng() * 20,
             });
             // consume the rng calls we used to do for unused features
-            rng(); rng();
+            rng();
         }
 
         // Group into 3 size buckets and use InstancedMesh
@@ -506,7 +517,7 @@ export class Track {
         const colors = [0x00ffff, 0xff0080, 0xffff00, 0x00ff80, 0x8000ff];
         const rng = this.seededRNG(99);
 
-        for (let i = 0; i < 30; i++) {
+        for (let i = 0; i < 15; i++) {
             const t = rng();
             const { pos, tangent } = this.getPointAt(t);
             const side = rng() > 0.5 ? 1 : -1;
@@ -534,32 +545,27 @@ export class Track {
     }
 
     private buildLights() {
-        // Reduced from 25 to 8 PointLights for GPU perf
-        // All 25 posts remain visually, only 8 get actual PointLight
+        // NO PointLights at all — Intel HD 5000 can't handle them
+        // All light posts remain visually via emissive materials
         const postMat = new THREE.MeshStandardMaterial({ color: 0x666666, flatShading: true });
         const headMat = new THREE.MeshStandardMaterial({
-            color: 0xffcc88, emissive: 0xffaa44, emissiveIntensity: 1.5,
+            color: 0xffcc88, emissive: 0xffaa44, emissiveIntensity: 2.5,
         });
 
-        for (let i = 0; i < 25; i++) {
+        // Reduce to every other post (13 total instead of 25)
+        for (let i = 0; i < 25; i += 2) {
             const t = i / 25;
             const { pos, tangent } = this.getPointAt(t);
-            const side = i % 2 === 0 ? 1 : -1;
+            const side = i % 4 === 0 ? 1 : -1;
             const lx = pos.x + tangent.z * side * (TRACK_WIDTH / 2 + 3);
             const lz = pos.z - tangent.x * side * (TRACK_WIDTH / 2 + 3);
 
-            // Only every 3rd post gets an actual PointLight (8 total)
-            if (i % 3 === 0) {
-                const light = new THREE.PointLight(0xffaa66, 3.5, 100);
-                light.position.set(lx, 8, lz);
-                this.group.add(light);
-            }
-
-            const post = new THREE.Mesh(new THREE.CylinderGeometry(0.15, 0.2, 8, 6), postMat);
+            const post = new THREE.Mesh(new THREE.CylinderGeometry(0.15, 0.2, 8, 4), postMat);
             post.position.set(lx, 4, lz);
             this.group.add(post);
 
-            const head = new THREE.Mesh(new THREE.BoxGeometry(0.6, 0.2, 0.6), headMat);
+            // Bright emissive head instead of PointLight
+            const head = new THREE.Mesh(new THREE.BoxGeometry(1.0, 0.4, 1.0), headMat);
             head.position.set(lx, 8, lz);
             this.group.add(head);
         }
@@ -684,9 +690,15 @@ export class Track {
             }
 
             // Spotlight pointing at track
-            const spotlight = new THREE.PointLight(0xffeedd, 4, 250);
-            spotlight.position.set(p.x, 45, p.z);
-            this.group.add(spotlight);
+            // Emissive head only — no PointLight
+            const glowHead = new THREE.Mesh(
+                new THREE.BoxGeometry(3, 2, 3),
+                new THREE.MeshStandardMaterial({
+                    color: 0xffeedd, emissive: 0xffcc88, emissiveIntensity: 3.0,
+                }),
+            );
+            glowHead.position.set(p.x, 45, p.z);
+            this.group.add(glowHead);
         });
     }
 
@@ -779,5 +791,99 @@ export class Track {
             s = (s * 16807 + 0) % 2147483647;
             return s / 2147483647;
         };
+    }
+
+    /** Check if a point is near the track centerline (with buffer) */
+    private isNearTrack(px: number, pz: number, buffer: number): boolean {
+        for (let i = 0; i < this.points.length; i += 8) {
+            const p = this.points[i];
+            const d = Math.sqrt((p.x - px) ** 2 + (p.z - pz) ** 2);
+            if (d < buffer) return true;
+        }
+        return false;
+    }
+
+    /** Mountain/hill terrain surrounding the track to prevent black skyline */
+    private buildTerrain() {
+        const rng = this.seededRNG(500);
+
+        // Ring 1: Near hills — fewer, simpler for Intel HD
+        const hillMat = new THREE.MeshStandardMaterial({
+            color: 0x1a1a2e, flatShading: true,
+            emissive: 0x0a0a15, emissiveIntensity: 0.15,
+        });
+
+        for (let i = 0; i < 18; i++) {
+            const angle = (i / 18) * Math.PI * 2 + rng() * 0.3;
+            const dist = 420 + rng() * 180;
+            const x = Math.cos(angle) * dist;
+            const z = Math.sin(angle) * dist;
+            const h = 15 + rng() * 30;
+            const r = 20 + rng() * 30;
+
+            const hill = new THREE.Mesh(
+                new THREE.ConeGeometry(r, h, 4),
+                hillMat,
+            );
+            hill.position.set(x, h * 0.4, z);
+            this.group.add(hill);
+        }
+
+        // Ring 2: Mid mountains
+        const midMat = new THREE.MeshStandardMaterial({
+            color: 0x141428, flatShading: true,
+            emissive: 0x080812, emissiveIntensity: 0.1,
+        });
+
+        for (let i = 0; i < 12; i++) {
+            const angle = (i / 12) * Math.PI * 2 + rng() * 0.4;
+            const dist = 620 + rng() * 230;
+            const x = Math.cos(angle) * dist;
+            const z = Math.sin(angle) * dist;
+            const h = 40 + rng() * 60;
+            const r = 30 + rng() * 50;
+
+            const mtn = new THREE.Mesh(
+                new THREE.ConeGeometry(r, h, 4),
+                midMat,
+            );
+            mtn.position.set(x, h * 0.4, z);
+            this.group.add(mtn);
+        }
+
+        // Ring 3: Far peaks (tall, distant) — 850-1100m
+        const farMat = new THREE.MeshStandardMaterial({
+            color: 0x0e0e20, flatShading: true,
+            emissive: 0x06060e, emissiveIntensity: 0.08,
+        });
+
+        for (let i = 0; i < 10; i++) {
+            const angle = (i / 10) * Math.PI * 2 + rng() * 0.5;
+            const dist = 850 + rng() * 250;
+            const x = Math.cos(angle) * dist;
+            const z = Math.sin(angle) * dist;
+            const h = 60 + rng() * 100;
+            const r = 40 + rng() * 70;
+
+            const peak = new THREE.Mesh(
+                new THREE.ConeGeometry(r, h, 4),
+                farMat,
+            );
+            peak.position.set(x, h * 0.35, z);
+            this.group.add(peak);
+        }
+
+        // Distant ground ring to ensure no black horizon
+        const distGroundMat = new THREE.MeshStandardMaterial({
+            color: 0x161628, flatShading: true,
+            emissive: 0x080810, emissiveIntensity: 0.1,
+        });
+        const distGround = new THREE.Mesh(
+            new THREE.RingGeometry(600, 1200, 32),
+            distGroundMat,
+        );
+        distGround.rotation.x = -Math.PI / 2;
+        distGround.position.y = -0.05;
+        this.group.add(distGround);
     }
 }

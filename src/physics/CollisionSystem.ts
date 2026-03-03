@@ -5,7 +5,7 @@ import { Car } from '../entities/Car';
  * Uses intentionally large hitboxes for satisfying bumper-to-bumper physics.
  */
 
-const HITBOX_RADIUS = 3.5;          // ~1.5× car length — deliberately oversized
+const HITBOX_RADIUS = 2.0;          // matches car body (~4.2m long, ~1.8m wide)
 const PUSH_FORCE = 0.92;            // how much to push apart on overlap
 const SPEED_LOSS = 0.7;             // speed multiplier on collision
 const BOUNCE_FACTOR = 0.35;         // how much directional bounce to apply

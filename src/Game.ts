@@ -34,26 +34,25 @@ export class Game {
     private raceFinishHandled = false;
 
     constructor(canvas: HTMLCanvasElement) {
-        // ── Renderer (optimised) ──
+        // ── Renderer (optimised for Intel HD 5000) ──
         this.renderer = new THREE.WebGLRenderer({
             canvas,
-            antialias: true,
+            antialias: false,              // HD 5000 can't afford MSAA
             powerPreference: 'high-performance',
         });
         this.renderer.setSize(window.innerWidth, window.innerHeight);
-        this.renderer.setPixelRatio(Math.min(window.devicePixelRatio, 1.5));
-        this.renderer.shadowMap.enabled = true;
-        this.renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+        this.renderer.setPixelRatio(1.0);  // force 1:1 pixels, no retina
+        this.renderer.shadowMap.enabled = false;  // shadows OFF for integrated GPU
         this.renderer.toneMapping = THREE.ACESFilmicToneMapping;
         this.renderer.toneMappingExposure = 1.6;
 
         // ── Scene ──
         this.scene = new THREE.Scene();
         this.scene.background = new THREE.Color(0x050510);
-        this.scene.fog = new THREE.FogExp2(0x080818, 0.0012);
+        this.scene.fog = new THREE.FogExp2(0x080818, 0.0015);  // stronger fog to hide draw distance
 
         // ── Camera ──
-        this.camera = new THREE.PerspectiveCamera(65, window.innerWidth / window.innerHeight, 0.1, 1500);
+        this.camera = new THREE.PerspectiveCamera(65, window.innerWidth / window.innerHeight, 1, 800);
 
         // ── Input ──
         this.input = new InputManager();
@@ -93,25 +92,17 @@ export class Game {
     }
 
     private setupLights() {
-        // Moonlight (optimised shadow settings)
-        const dir = new THREE.DirectionalLight(0x6688bb, 1.0);
+        // Single directional light — NO shadows (Intel HD can't handle them)
+        const dir = new THREE.DirectionalLight(0x6688bb, 1.2);
         dir.position.set(-100, 300, 150);
-        dir.castShadow = true;
-        dir.shadow.mapSize.set(1024, 1024);
-        dir.shadow.camera.near = 10;
-        dir.shadow.camera.far = 400;
-        dir.shadow.camera.left = -200;
-        dir.shadow.camera.right = 200;
-        dir.shadow.camera.top = 200;
-        dir.shadow.camera.bottom = -200;
         this.scene.add(dir);
 
-        // Hemisphere (sky / ground)
-        const hemi = new THREE.HemisphereLight(0x334466, 0x151525, 1.2);
+        // Hemisphere (sky / ground) — cheap ambient
+        const hemi = new THREE.HemisphereLight(0x334466, 0x151525, 1.4);
         this.scene.add(hemi);
 
-        // Extra ambient so nothing is pure black
-        const ambient = new THREE.AmbientLight(0x222244, 0.8);
+        // Stronger ambient to compensate for no shadows
+        const ambient = new THREE.AmbientLight(0x333355, 1.0);
         this.scene.add(ambient);
     }
 

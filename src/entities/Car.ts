@@ -27,7 +27,7 @@ export class Car {
 
     // Dynamic brake light references
     private tailLights: THREE.Mesh[] = [];
-    private tailGlow: THREE.PointLight | null = null;
+    private tailGlow: THREE.Mesh | null = null;
 
     // Initial position for reset
     private readonly initX: number;
@@ -50,7 +50,7 @@ export class Car {
             if (child instanceof THREE.Mesh && child.name.startsWith('tailLight')) {
                 this.tailLights.push(child);
             }
-            if (child instanceof THREE.PointLight && child.name === 'tailGlow') {
+            if (child instanceof THREE.Mesh && child.name === 'tailGlow') {
                 this.tailGlow = child;
             }
         });
@@ -74,17 +74,17 @@ export class Car {
         this.mesh.rotation.x = this.bodyTiltX;
         this.mesh.rotation.z = this.bodyTiltZ;
 
-        // ── Dynamic brake lights ──
+        // ── Dynamic brake lights (emissive only, no PointLight) ──
         const braking = input.brake > 0.1 && this.state.speed > 0.5;
-        const brakeIntensity = braking ? 0.5 + input.brake * 2.5 : 1.0;
-        const brakeEmissive = braking ? 3.0 : 1.0;
+        const brakeEmissive = braking ? 2.0 + input.brake * 3.0 : 1.0;
 
         for (const tl of this.tailLights) {
             const mat = tl.material as THREE.MeshStandardMaterial;
             mat.emissiveIntensity = brakeEmissive;
         }
         if (this.tailGlow) {
-            this.tailGlow.intensity = brakeIntensity;
+            const mat = this.tailGlow.material as THREE.MeshStandardMaterial;
+            mat.emissiveIntensity = brakeEmissive;
         }
     }
 

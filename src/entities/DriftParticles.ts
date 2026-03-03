@@ -5,9 +5,9 @@ import * as THREE from 'three';
  * Object-pooled: reuses a fixed buffer of particles.
  */
 
-const MAX_PARTICLES = 200;
+const MAX_PARTICLES = 80;
 const PARTICLE_LIFE = 1.2;         // seconds
-const SPAWN_RATE = 60;              // particles/second while drifting
+const SPAWN_RATE = 30;              // particles/second while drifting
 const RISE_SPEED = 2.5;             // upward velocity
 const SPREAD = 0.8;                 // random horizontal spread
 
