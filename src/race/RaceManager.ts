@@ -81,10 +81,15 @@ export class RaceManager {
 
         // ── Sort positions ──
         this.positions.sort((a, b) => {
-            if (a.lap !== b.lap) return b.lap - a.lap;
+            // Virtual lap to handle starting behind the line on lap 1
+            const virtualLapA = (a.lap === 1 && a.trackT > 0.8) ? 0 : a.lap;
+            const virtualLapB = (b.lap === 1 && b.trackT > 0.8) ? 0 : b.lap;
+
+            if (virtualLapA !== virtualLapB) return virtualLapB - virtualLapA;
 
             let aT = a.trackT;
             let bT = b.trackT;
+
             // Handle crossover at finish line: if one is near 1.0 and other is near 0.0 with SAME lap,
             // the one near 1.0 is actually behind.
             if (Math.abs(aT - bT) > 0.5) {

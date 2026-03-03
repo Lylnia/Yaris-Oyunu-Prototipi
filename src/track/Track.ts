@@ -141,7 +141,7 @@ export class Track {
         geo.computeVertexNormals();
 
         const mat = new THREE.MeshStandardMaterial({
-            color: 0x333333, flatShading: true, roughness: 0.9, metalness: 0.0,
+            color: 0x333333, roughness: 0.9, metalness: 0.0,
         });
         const mesh = new THREE.Mesh(geo, mat);
         mesh.receiveShadow = true;
@@ -286,14 +286,22 @@ export class Track {
     private buildGround() {
         // Main grassy ground
         const geo = new THREE.PlaneGeometry(2400, 2400);
+        // Turn off flatShading for the ground to make it smoother
         const mat = new THREE.MeshStandardMaterial({
-            color: 0x3d5c2d, flatShading: true, roughness: 1.0
+            color: 0x3d5c2d, roughness: 1.0, metalness: 0.1
         });
         const ground = new THREE.Mesh(geo, mat);
         ground.rotation.x = -Math.PI / 2;
         ground.position.y = -0.1;
         ground.receiveShadow = true;
         this.group.add(ground);
+
+        // Add a subtle grid to give a sense of scale and texture to the grass
+        const grid = new THREE.GridHelper(2400, 120, 0x000000, 0x000000);
+        (grid.material as THREE.Material).opacity = 0.08;
+        (grid.material as THREE.Material).transparent = true;
+        grid.position.y = -0.05;
+        this.group.add(grid);
     }
 
     private buildGrandstands() {
@@ -482,19 +490,19 @@ export class Track {
 
     private buildForest() {
         const rng = this.seededRNG(888);
-        const trunkMat = new THREE.MeshStandardMaterial({ color: 0x4a3a2a, flatShading: true });
+        const trunkMat = new THREE.MeshStandardMaterial({ color: 0x4a3a2a, roughness: 0.9, metalness: 0.1 });
         const leafColors = [0x225533, 0x2e6f3b, 0x1f4726, 0x3d7a44];
 
         // Use instancing for large number of trees
         const treeCount = 1200;
-        const trunkGeo = new THREE.CylinderGeometry(0.4, 0.6, 6, 5);
-        const crownGeo = new THREE.ConeGeometry(3.5, 8, 6);
+        const trunkGeo = new THREE.CylinderGeometry(0.4, 0.6, 6, 8); // slightly rounder trunks
+        const crownGeo = new THREE.ConeGeometry(3.5, 8, 8);
 
         const trunkMatrix = new THREE.Matrix4();
         const trunkInst = new THREE.InstancedMesh(trunkGeo, trunkMat, treeCount);
 
         // Instanced crowns needed per color
-        const crownMats = leafColors.map(c => new THREE.MeshStandardMaterial({ color: c, flatShading: true }));
+        const crownMats = leafColors.map(c => new THREE.MeshStandardMaterial({ color: c, roughness: 0.8 }));
         const crownInsts = crownMats.map(mat => new THREE.InstancedMesh(crownGeo, mat, treeCount));
         const colorCounts = [0, 0, 0, 0];
 
@@ -546,9 +554,9 @@ export class Track {
             { x: -200, z: -280 },
         ];
 
-        const towerMat = new THREE.MeshStandardMaterial({ color: 0x555555, flatShading: true });
+        const towerMat = new THREE.MeshStandardMaterial({ color: 0x555555 });
         const lightHeadMat = new THREE.MeshStandardMaterial({
-            color: 0xffcc88, flatShading: true,
+            color: 0xffcc88,
         });
 
         positions.forEach(p => {
@@ -579,7 +587,7 @@ export class Track {
             const glowHead = new THREE.Mesh(
                 new THREE.BoxGeometry(3, 2, 3),
                 new THREE.MeshStandardMaterial({
-                    color: 0xffeedd, flatShading: true,
+                    color: 0xffeedd,
                 }),
             );
             glowHead.position.set(p.x, 45, p.z);
@@ -599,7 +607,7 @@ export class Track {
         ];
 
         const parkingMat = new THREE.MeshStandardMaterial({
-            color: 0x2a2a3a, flatShading: true,
+            color: 0x2a2a3a, roughness: 0.9,
         });
 
         // Collect all parked car transforms
@@ -632,7 +640,7 @@ export class Track {
         // Single InstancedMesh for all parked cars
         if (carTransforms.length > 0) {
             const carGeo = new THREE.BoxGeometry(1.5, 0.8, 3.2);
-            const carMat = new THREE.MeshStandardMaterial({ color: 0x2a2a33, flatShading: true });
+            const carMat = new THREE.MeshStandardMaterial({ color: 0x2a2a33, roughness: 0.6, metalness: 0.3 });
             const inst = new THREE.InstancedMesh(carGeo, carMat, carTransforms.length);
             carTransforms.forEach((m, i) => inst.setMatrixAt(i, m));
             inst.instanceMatrix.needsUpdate = true;
@@ -673,9 +681,9 @@ export class Track {
     private buildDistantMountains() {
         const mountainCount = 18;
         const radius = 900;
-        const mountainGeo = new THREE.ConeGeometry(250, 450, 8);
+        const mountainGeo = new THREE.ConeGeometry(250, 450, 16);
         const mountainMat = new THREE.MeshStandardMaterial({
-            color: 0x3d4a2d, flatShading: true, roughness: 1.0,
+            color: 0x3d4a2d, roughness: 0.9, metalness: 0.0,
         });
 
         const rng = this.seededRNG(555);
@@ -721,7 +729,7 @@ export class Track {
 
         // Ring 1: Near hills — fewer, simpler for Intel HD
         const hillMat = new THREE.MeshStandardMaterial({
-            color: 0x1a1a2e, flatShading: true,
+            color: 0x1a1a2e, roughness: 0.9, metalness: 0.1,
             emissive: 0x0a0a15, emissiveIntensity: 0.15,
         });
 
@@ -734,7 +742,7 @@ export class Track {
             const r = 20 + rng() * 30;
 
             const hill = new THREE.Mesh(
-                new THREE.ConeGeometry(r, h, 4),
+                new THREE.ConeGeometry(r, h, 8),
                 hillMat,
             );
             hill.position.set(x, h * 0.4, z);
@@ -743,7 +751,7 @@ export class Track {
 
         // Ring 2: Mid mountains
         const midMat = new THREE.MeshStandardMaterial({
-            color: 0x141428, flatShading: true,
+            color: 0x141428, roughness: 0.9, metalness: 0.1,
             emissive: 0x080812, emissiveIntensity: 0.1,
         });
 
@@ -756,7 +764,7 @@ export class Track {
             const r = 30 + rng() * 50;
 
             const mtn = new THREE.Mesh(
-                new THREE.ConeGeometry(r, h, 4),
+                new THREE.ConeGeometry(r, h, 12),
                 midMat,
             );
             mtn.position.set(x, h * 0.4, z);
@@ -765,7 +773,7 @@ export class Track {
 
         // Ring 3: Far peaks (tall, distant) — 850-1100m
         const farMat = new THREE.MeshStandardMaterial({
-            color: 0x0e0e20, flatShading: true,
+            color: 0x0e0e20, roughness: 1.0,
             emissive: 0x06060e, emissiveIntensity: 0.08,
         });
 
@@ -778,7 +786,7 @@ export class Track {
             const r = 40 + rng() * 70;
 
             const peak = new THREE.Mesh(
-                new THREE.ConeGeometry(r, h, 4),
+                new THREE.ConeGeometry(r, h, 16),
                 farMat,
             );
             peak.position.set(x, h * 0.35, z);
@@ -787,11 +795,11 @@ export class Track {
 
         // Distant ground ring to ensure no black horizon
         const distGroundMat = new THREE.MeshStandardMaterial({
-            color: 0x161628, flatShading: true,
+            color: 0x161628, roughness: 1.0,
             emissive: 0x080810, emissiveIntensity: 0.1,
         });
         const distGround = new THREE.Mesh(
-            new THREE.RingGeometry(600, 1200, 32),
+            new THREE.RingGeometry(600, 1200, 64),
             distGroundMat,
         );
         distGround.rotation.x = -Math.PI / 2;

@@ -94,7 +94,11 @@ export class HUD {
     /** Show NFS-style music track notification */
     showMusicToast(title: string, artist: string) {
         if (!this.musicToast) return;
-        this.musicToast.innerHTML = `<span class="music-icon">♫</span> <span class="music-name">${title}</span><br><span style="font-size: 10px; opacity: 0.8">${artist}</span>`;
+        this.musicToast.innerHTML = `
+            <span class="music-icon">EA SPORTS™ TRAX</span>
+            <span class="music-name">${title}</span>
+            <span class="music-artist">${artist}</span>
+        `;
         this.musicToast.classList.add('visible');
 
         // Clear previous timer
@@ -103,7 +107,7 @@ export class HUD {
         // Hide after 4 seconds
         this.musicToastTimer = setTimeout(() => {
             this.musicToast.classList.remove('visible');
-        }, 4000);
+        }, 5000); // 5 seconds is better for reading
     }
 
     /** Show camera mode notification */

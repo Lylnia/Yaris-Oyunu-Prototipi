@@ -379,38 +379,56 @@ body {
 /* Music / Camera Toast (NFS style) */
 #music-toast {
   position: absolute;
-  top: 20px;
-  left: 50%;
-  transform: translateX(-50%) translateY(-80px);
-  background: rgba(0, 0, 0, 0.75);
-  backdrop-filter: blur(8px);
-  border: 1px solid rgba(0, 255, 255, 0.3);
-  border-radius: 8px;
-  padding: 10px 24px;
-  font-size: 13px;
+  top: 40px;
+  right: -350px;
+  /* Hidden off-screen initially */
+  background: linear-gradient(90deg, rgba(0, 0, 0, 0.85) 0%, rgba(20, 20, 40, 0.85) 100%);
+  border-left: 4px solid #0ff;
+  padding: 12px 24px;
+  font-family: 'Orbitron', sans-serif;
   color: #fff;
-  letter-spacing: 1px;
   white-space: nowrap;
   pointer-events: none;
   opacity: 0;
-  transition: transform 0.5s cubic-bezier(0.16, 1, 0.3, 1), opacity 0.5s ease;
+  transition: right 0.6s cubic-bezier(0.175, 0.885, 0.32, 1.275), opacity 0.4s ease;
   z-index: 30;
   display: flex;
-  align-items: center;
-  gap: 8px;
+  flex-direction: column;
+  justify-content: center;
+  box-shadow: 0 4px 15px rgba(0, 255, 255, 0.2);
+  transform: skewX(-10deg);
 }
 
 #music-toast.visible {
-  transform: translateX(-50%) translateY(0);
+  right: 40px;
   opacity: 1;
 }
 
+#music-toast>span {
+  transform: skewX(10deg);
+  /* un-skew text */
+}
+
 .music-icon {
-  font-size: 18px;
+  font-size: 14px;
   color: #0ff;
+  margin-bottom: 2px;
+  letter-spacing: 2px;
+  text-transform: uppercase;
+  font-weight: 700;
 }
 
 .music-name {
+  color: #fff;
+  font-size: 20px;
+  font-weight: 900;
+  font-style: italic;
+  text-shadow: 0 0 10px rgba(255, 255, 255, 0.5);
+}
+
+.music-artist {
   color: #0ff;
-  font-weight: 700;
+  font-size: 14px;
+  opacity: 0.9;
+  margin-top: 2px;
 }

@@ -134,22 +134,34 @@ export function resolveCarCollisions(cars: Car[]): void {
             const playerInvolved = carA.isPlayer || carB.isPlayer;
             const speedLoss = playerInvolved ? SPEED_LOSS_PLAYER : SPEED_LOSS_AI;
 
+            // Pushing: momentum transfer
+            // Calculate relative speed along the collision normal
+            const relSpd = (b.speed * Math.cos(b.heading) - a.speed * Math.cos(a.heading)) * Math.cos(axisX) +
+                (b.speed * Math.sin(b.heading) - a.speed * Math.sin(a.heading)) * Math.sin(axisZ);
+
+            // Transfer some speed from faster to slower
+            if (relSpd > 0) { // B is moving towards A faster
+                a.speed += relSpd * 0.4;
+                b.speed -= relSpd * 0.4;
+            } else { // A is moving towards B faster
+                b.speed -= relSpd * 0.4; // relSpd is neg, so b gains speed
+                a.speed += relSpd * 0.4; // a loses speed
+            }
+
             a.speed *= speedLoss;
             b.speed *= speedLoss;
 
-            // Heading bounce only for player collisions
-            if (playerInvolved) {
-                const aSpd = Math.abs(a.speed);
-                const bSpd = Math.abs(b.speed);
+            // Heading bounce (applies a larger deflection if hit from an angle)
+            const aSpd = Math.abs(a.speed);
+            const bSpd = Math.abs(b.speed);
 
-                if (aSpd > 1) {
-                    a.heading += nx * BOUNCE_FACTOR * 0.12;
-                    a.travelDir += nx * BOUNCE_FACTOR * 0.08;
-                }
-                if (bSpd > 1) {
-                    b.heading -= nx * BOUNCE_FACTOR * 0.12;
-                    b.travelDir -= nx * BOUNCE_FACTOR * 0.08;
-                }
+            if (aSpd > 1) {
+                a.heading += nx * BOUNCE_FACTOR * 0.2;
+                a.travelDir += nx * BOUNCE_FACTOR * 0.15;
+            }
+            if (bSpd > 1) {
+                b.heading -= nx * BOUNCE_FACTOR * 0.2;
+                b.travelDir -= nx * BOUNCE_FACTOR * 0.15;
             }
         }
     }

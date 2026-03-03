@@ -88,6 +88,10 @@ export class AIDriver {
     /** For Adaptive: target lap time */
     private targetLapTime = 55;
 
+    /** Preferred lane offset: -1.0 (inside) to +1.0 (outside) */
+    private laneOffset = 0;
+    private currentOffset = 0;
+
     constructor(readonly car: Car, type: AIType, private track: Track) {
         this.type = type;
         switch (type) {
@@ -95,6 +99,11 @@ export class AIDriver {
             case AIType.Aggressive: this.profile = AGGRESSIVE_PROFILE; break;
             case AIType.Adaptive: this.profile = [...CONSISTENT_PROFILE]; break;
         }
+
+        // Randomly assign a preferred lane wide enough to prevent single-file driving
+        // Multiply by 4.5m to keep them well within the 18m track width loosely
+        this.laneOffset = (Math.random() * 2 - 1) * 4.5;
+        this.currentOffset = this.laneOffset;
     }
 
     /** Call after player completes a lap to update Adaptive AI */
@@ -108,11 +117,16 @@ export class AIDriver {
         const t = this.car.trackT;
         const targetSpeed = this.getTargetSpeed(t, playerCar, currentLap, totalLaps);
 
-        // ── Steer toward next point on ideal line ──
+        // ── Steer toward next point on ideal line WITH OFFSET ──
         const lookAhead = (t + 0.02) % 1;
         const target = this.track.getPointAt(lookAhead);
-        const dx = target.pos.x - this.car.state.px;
-        const dz = target.pos.z - this.car.state.pz;
+
+        // Apply lane offset radially
+        const tX = target.pos.x + target.tangent.z * this.currentOffset;
+        const tZ = target.pos.z - target.tangent.x * this.currentOffset;
+
+        const dx = tX - this.car.state.px;
+        const dz = tZ - this.car.state.pz;
         const targetAngle = Math.atan2(dx, dz);
         let angleDiff = targetAngle - this.car.state.heading;
         while (angleDiff > Math.PI) angleDiff -= Math.PI * 2;
@@ -232,25 +246,31 @@ export class AIDriver {
         }
 
         // ── Collision Avoidance ──
+        // Drift back to preferred lane if clear
+        this.currentOffset = lerp(this.currentOffset, this.laneOffset, dt * 0.5);
+
         for (const other of allCars) {
             if (other === this.car) continue;
             const dx = other.state.px - this.car.state.px;
             const dz = other.state.pz - this.car.state.pz;
             const distSq = dx * dx + dz * dz;
-            if (distSq < 150) { // ~12m radius
+            if (distSq < 200) { // ~14m radius
                 const angle = Math.atan2(dx, dz);
                 let diff = angle - this.car.state.heading;
                 while (diff > Math.PI) diff -= Math.PI * 2;
                 while (diff < -Math.PI) diff += Math.PI * 2;
 
                 // If car is ahead of us
-                if (Math.abs(diff) < 0.8) {
-                    // Steer away
-                    steer -= Math.sign(diff) * clamp(1 - distSq / 150, 0, 1) * 0.8;
+                if (Math.abs(diff) < 1.0) {
+                    // Steer AWAY
+                    const pushOffset = Math.sign(diff) * -1.5;
+                    this.currentOffset = clamp(this.currentOffset + pushOffset, -6, 6);
+                    steer -= Math.sign(diff) * clamp(1 - distSq / 200, 0, 1) * 1.2;
+
                     // Brake if very close and they are slower
-                    if (distSq < 40 && other.state.speed < this.car.state.speed) {
-                        brake = Math.max(brake, 0.6);
-                        throttle *= 0.3;
+                    if (distSq < 60 && other.state.speed < this.car.state.speed) {
+                        brake = Math.max(brake, 0.7);
+                        throttle *= 0.2;
                     }
                 }
             }
