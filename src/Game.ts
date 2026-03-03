@@ -146,10 +146,6 @@ export class Game {
         this.race.reset();
         this.raceFinishHandled = false;
 
-        // Reset audio
-        this.audio.reset();
-        this.audioStarted = true;
-
         // Reset camera
         this.cameraCtrl.reset();
 
@@ -162,9 +158,15 @@ export class Game {
         this.paused = false;
 
         if (goToMenu) {
+            // Going to menu: stop all audio
+            this.audio.fadeOut();
+            this.audioStarted = false;
             this.started = false;
             this.startMenu.style.display = 'flex';
         } else {
+            // Restarting race: reset and restart audio
+            this.audio.reset();
+            this.audioStarted = true;
             this.started = true;
         }
 
