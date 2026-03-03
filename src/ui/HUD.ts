@@ -92,9 +92,9 @@ export class HUD {
     }
 
     /** Show NFS-style music track notification */
-    showMusicToast(trackName: string) {
+    showMusicToast(title: string, artist: string) {
         if (!this.musicToast) return;
-        this.musicToast.innerHTML = `<span class="music-icon">♫</span> <span class="music-name">${trackName}</span>`;
+        this.musicToast.innerHTML = `<span class="music-icon">♫</span> <span class="music-name">${title}</span><br><span style="font-size: 10px; opacity: 0.8">${artist}</span>`;
         this.musicToast.classList.add('visible');
 
         // Clear previous timer

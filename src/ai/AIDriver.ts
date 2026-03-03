@@ -231,7 +231,7 @@ export class AIDriver {
             throttle = 0.3; // cruise
         }
 
-        return { throttle, brake, steer: clamp(steer, -1, 1) };
+        return { throttle, brake, steer: clamp(steer, -1, 1), handbrake: false };
     }
 
     private getTargetSpeed(t: number, playerCar: Car, currentLap: number, totalLaps: number): number {
